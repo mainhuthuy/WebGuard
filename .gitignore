@@ -1,0 +1,94 @@
+# ============================
+# Python
+# ============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python tools
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# ============================
+# Node.js
+# ============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+frontend/dist/
+landing/dist/
+
+# ============================
+# Environment variables
+# ============================
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ============================
+# Docker
+# ============================
+docker/data/
+
+# ============================
+# Database
+# ============================
+*.db
+*.sqlite3
+
+# ============================
+# IDE & Editors
+# ============================
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================
+# OS
+# ============================
+.DS_Store
+ehthumbs.db
+Icon?
+
+# ============================
+# Reports & Exports
+# ============================
+reports/
+exports/
+
+# ============================
+# Logs
+# ============================
+*.log
+logs/

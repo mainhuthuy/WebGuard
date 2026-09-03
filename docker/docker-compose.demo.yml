@@ -1,0 +1,24 @@
+services:
+  demo-backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - WEBGUARD_ENV=production
+      - WEBGUARD_DEBUG=false
+      - WEBGUARD_DEMO_MODE=true
+      - WEBGUARD_DEMO_RATE_LIMIT=5
+      - WEBGUARD_DB_URL=sqlite:///./webguard_demo.db
+    restart: unless-stopped
+
+  landing:
+    build:
+      context: ../landing
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - demo-backend
+    restart: unless-stopped
