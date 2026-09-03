@@ -1,0 +1,49 @@
+@import './reset.css';
+@import './animations.css';
+
+:root {
+  /* Cybersecurity Dark Vibe Palette */
+  --bg-primary: #0a0d14;
+  --bg-secondary: #121826;
+  --bg-card: rgba(18, 24, 38, 0.7);
+  --bg-card-hover: rgba(28, 36, 56, 0.8);
+  --border-color: rgba(99, 102, 241, 0.15);
+  --border-glow: rgba(99, 102, 241, 0.4);
+
+  /* Primary & Accent Colors */
+  --primary: #6366f1;         /* Indigo */
+  --primary-hover: #4f46e5;
+  --accent-cyan: #06b6d4;      /* Cyber Cyan */
+  --accent-purple: #a855f7;    /* Cyber Purple */
+  --accent-emerald: #10b981;   /* Success / Safe */
+
+  /* Severity Colors */
+  --severity-critical: #ef4444;
+  --severity-high: #f97316;
+  --severity-medium: #eab308;
+  --severity-low: #3b82f6;
+  --severity-info: #64748b;
+
+  /* Typography Colors */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Fonts */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
