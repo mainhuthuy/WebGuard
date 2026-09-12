@@ -1,6 +1,7 @@
 """Main application entrypoint for WebGuard API service."""
 
-from collections.abc import AsyncIterator
+from app.api.v1 import api_router
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import logging
 from typing import Any
@@ -20,7 +21,7 @@ logger = logging.getLogger("app.main")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Quản lý vòng đời ứng dụng: Khởi chạy logging và thông báo khi bật/tắt server."""
     settings = get_settings()
     setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)
@@ -62,7 +63,10 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     # 3. Kích hoạt bộ xử lý lỗi toàn cục (Global Error Handlers)
     register_exception_handlers(app)
 
-    # 4. Các endpoint cơ bản ban đầu
+    # 4. Gắn các API Routers v1 vào ứng dụng
+    app.include_router(api_router, prefix="/api/v1")
+
+    # 5. Các endpoint cơ bản ban đầu
     @app.get("/", tags=["General"])
     async def root() -> dict[str, str]:
         """Endpoint gốc kiểm tra API còn sống."""
@@ -87,5 +91,4 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     return app
 
 
-# Instance mặc định để máy chủ Uvicorn gọi chạy
 app = create_application()
