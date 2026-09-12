@@ -1,13 +1,22 @@
+"""Schemas package export."""
+
 from app.schemas.scan import (
     Finding,
-    ScanRequest,
+    ScanCreateRequest,
+    ScanCreateResponse,
     ScanResponse,
+    ScanStatus,
     ScoringResult,
     SeverityLevel,
 )
 
+ScanRequest = ScanCreateRequest
+
 __all__ = [
     "SeverityLevel",
+    "ScanStatus",
+    "ScanCreateRequest",
+    "ScanCreateResponse",
     "ScanRequest",
     "Finding",
     "ScoringResult",

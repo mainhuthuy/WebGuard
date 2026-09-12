@@ -1,5 +1,12 @@
+"""Pydantic data schemas for scan requests, findings, and responses."""
+
+from datetime import datetime, timezone
 from enum import Enum
-from pydantic import BaseModel, HttpUrl
+import ipaddress
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, Field, field_validator
+
 
 class SeverityLevel(str, Enum):
     CRITICAL = "critical"
@@ -7,9 +14,68 @@ class SeverityLevel(str, Enum):
     MEDIUM = "medium"
     LOW = "low"
 
-class ScanRequest(BaseModel):
-    url: HttpUrl  # Pydantic tự động kiểm tra định dạng URL (phải bắt đầu bằng http:// hoặc https://)
 
+class ScanStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ScanCreateRequest(BaseModel):
+    """Payload gửi lên để yêu cầu tạo một lượt quét bảo mật mới."""
+
+    url: str = Field(
+        ...,
+        description="Target URL cần quét (phải có http:// hoặc https://)",
+        examples=["https://example.com"],
+    )
+
+    @field_validator("url")
+    @classmethod
+    def validate_target_url(cls, v: str) -> str:
+        url_str = v.strip()
+        parsed = urlparse(url_str)
+
+        # 1. Kiểm tra scheme phải là http hoặc https
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL phải bắt đầu bằng giao thức http:// hoặc https://")
+
+        # 2. Phải có hostname (tên miền)
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("URL không hợp lệ, không tìm thấy hostname")
+
+        # 3. Chống SSRF: Chặn loopback / localhost
+        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0"):
+            raise ValueError("Không được phép quét localhost hoặc địa chỉ loopback cục bộ")
+
+        # 4. Chặn dải IP Private nội bộ (10.x, 192.168.x, 172.16-31.x)
+        try:
+            ip = ipaddress.ip_address(hostname)
+            is_ip = True
+        except ValueError:
+            # Không phải dạng IP thuần (là tên miền chữ như example.com)
+            is_ip = False
+        # Nếu là IP thật mà lại là Private hoặc Loopback thì CHẶN NGAY
+        if is_ip and (ip.is_private or ip.is_loopback):
+            raise ValueError("Không được phép quét dải địa chỉ IP mạng nội bộ (Private IP)")
+        return url_str
+
+
+class ScanCreateResponse(BaseModel):
+    """Thông tin trả về ngay khi khởi tạo thành công một phiên quét."""
+
+    scan_id: str = Field(..., description="Mã định danh duy nhất của lượt quét (UUID)")
+    target_url: str = Field(..., description="URL mục tiêu đã được chuẩn hóa")
+    status: ScanStatus = Field(default=ScanStatus.PENDING, description="Trạng thái hiện tại")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Thời gian khởi tạo phiên quét (UTC)",
+    )
+
+
+# --- Các model kết quả từ Sprint 1 giữ nguyên ---
 class Finding(BaseModel):
     module: str
     name: str
@@ -18,13 +84,17 @@ class Finding(BaseModel):
     remediation: str
     url: str | None = None
 
+
 class ScoringResult(BaseModel):
     score: int
     grade: str
     total_findings: int
 
+
 class ScanResponse(BaseModel):
+    scan_id: str | None = None
     url: str
+    status: ScanStatus = ScanStatus.COMPLETED
     total_findings: int
     findings: list[Finding]
     scoring: ScoringResult
