@@ -42,8 +42,8 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Chạy migrations ở chế độ 'online' (kết nối trực tiếp DB để migrate)."""
     configuration = config.get_section(config.config_ini_section, {})
-    url = config.get_main_option("sqlalchemy.url")
-    configuration["sqlalchemy.url"] = url
+    url = config.get_main_option("sqlalchemy.url") or settings.DB_URL
+    configuration["sqlalchemy.url"] = str(url)
 
     connectable = engine_from_config(
         configuration,
