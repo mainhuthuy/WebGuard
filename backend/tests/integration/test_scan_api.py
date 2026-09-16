@@ -117,3 +117,76 @@ def test_stream_scan_success_and_replay(client: TestClient, monkeypatch: pytest.
     assert "event: complete" in replay_res.text
     assert "Phiên quét đã hoàn tất từ trước" in replay_res.text
 
+
+def test_get_scan_not_found(client: TestClient) -> None:
+    """Kiểm tra lấy kết quả quét với scan_id không tồn tại trả về 404."""
+    response = client.get("/api/v1/scan/non-existent-uuid")
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data["success"] is False
+    assert data["error"]["code"] == "SCAN_NOT_FOUND"
+
+
+def test_get_scan_pending(client: TestClient) -> None:
+    """Kiểm tra lấy kết quả quét khi scan còn đang ở trạng thái pending."""
+    # 1. Tạo scan mới (trạng thái pending)
+    create_res = client.post("/api/v1/scan", json={"url": "https://example.com"})
+    assert create_res.status_code == 201
+    scan_id = create_res.json()["scan_id"]
+
+    # 2. Truy vấn kết quả ngay (chưa quét)
+    get_res = client.get(f"/api/v1/scan/{scan_id}")
+    assert get_res.status_code == 200
+    data = get_res.json()
+
+    assert data["scan_id"] == scan_id
+    assert data["target_url"] == "https://example.com"
+    assert data["status"] == "pending"
+    assert data["total_findings"] == 0
+    assert data["findings"] == []
+    assert data["scoring"] is None
+    assert data["completed_at"] is None
+
+
+def test_get_scan_completed(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kiểm tra lấy kết quả quét đầy đủ sau khi stream quét hoàn tất."""
+    # 1. Tạo scan
+    create_res = client.post("/api/v1/scan", json={"url": "https://example.com"})
+    scan_id = create_res.json()["scan_id"]
+
+    # 2. Mock modules và chạy stream để quét xong
+    async def mock_scan(self: Any, url: str) -> list[dict[str, Any]]:
+        module_name = getattr(self, "name", "mock")
+        return [
+            {
+                "module": module_name,
+                "name": f"Mock {module_name} issue",
+                "severity": "medium",
+                "description": "Mock finding",
+                "remediation": "Fix it",
+                "url": url,
+            }
+        ]
+
+    from app.modules.base import BaseModule
+    monkeypatch.setattr(BaseModule, "scan", mock_scan)
+
+    stream_res = client.get(f"/api/v1/scan/{scan_id}/stream")
+    assert stream_res.status_code == 200
+
+    # 3. Lấy kết quả quét
+    get_res = client.get(f"/api/v1/scan/{scan_id}")
+    assert get_res.status_code == 200
+    data = get_res.json()
+
+    assert data["scan_id"] == scan_id
+    assert data["status"] == "completed"
+    assert data["total_findings"] > 0
+    assert len(data["findings"]) > 0
+    assert data["scoring"] is not None
+    assert "score" in data["scoring"]
+    assert "grade" in data["scoring"]
+    assert data["completed_at"] is not None
+
+

@@ -110,6 +110,25 @@ class ScanResponse(BaseModel):
     scoring: ScoringResult
 
 
+class ScanDetailResponse(BaseModel):
+    """Chi tiết đầy đủ thông tin và kết quả của một phiên quét."""
+
+    scan_id: str = Field(..., description="Mã định danh duy nhất của lượt quét")
+    target_url: str = Field(..., description="URL mục tiêu đã quét")
+    status: ScanStatus = Field(..., description="Trạng thái hiện tại của phiên quét")
+    created_at: datetime = Field(..., description="Thời điểm khởi tạo (UTC)")
+    completed_at: datetime | None = Field(
+        default=None, description="Thời điểm hoàn thành (UTC)"
+    )
+    total_findings: int = Field(default=0, description="Tổng số lỗ hổng phát hiện được")
+    findings: list[Finding] = Field(
+        default_factory=list, description="Danh sách các phát hiện an ninh"
+    )
+    scoring: ScoringResult | None = Field(
+        default=None, description="Kết quả tính điểm an ninh"
+    )
+
+
 class ScanStreamEvent(BaseModel):
     """Cấu trúc dữ liệu cho mỗi sự kiện bắn về client qua SSE stream."""
 

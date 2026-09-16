@@ -15,8 +15,10 @@ from app.modules.scanner import Scanner
 from app.schemas.scan import (
     ScanCreateRequest,
     ScanCreateResponse,
+    ScanDetailResponse,
     ScanEventType,
     ScanStatus,
+    ScoringResult,
 )
 
 logger = logging.getLogger("app.api.v1.scan")
@@ -142,3 +144,39 @@ async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
 
     return EventSourceResponse(event_generator())
 
+
+@router.get(
+    "/{scan_id}",
+    response_model=ScanDetailResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Lấy chi tiết kết quả một lượt quét",
+    description="Truy vấn toàn bộ thông tin và findings của một phiên quét đã tạo.",
+)
+async def get_scan_result(scan_id: str) -> ScanDetailResponse:
+    """Trả về chi tiết đầy đủ của một phiên quét theo scan_id."""
+    if scan_id not in scan_jobs:
+        raise ScanNotFoundException(scan_id=scan_id)
+
+    job = scan_jobs[scan_id]
+    findings: list[dict[str, Any]] = job.get("findings") or []
+    scoring_data = job.get("scoring")
+
+    # Đóng gói kết quả chấm điểm (chỉ khi quét hoàn tất)
+    scoring_result: ScoringResult | None = None
+    if isinstance(scoring_data, dict) and "score" in scoring_data:
+        scoring_result = ScoringResult(
+            score=scoring_data["score"],
+            grade=scoring_data["grade"],
+            total_findings=scoring_data.get("total_findings", len(findings)),
+        )
+
+    return ScanDetailResponse(
+        scan_id=scan_id,
+        target_url=job["target_url"],
+        status=job["status"],
+        created_at=job["created_at"],
+        completed_at=job.get("completed_at"),
+        total_findings=len(findings),
+        findings=findings,
+        scoring=scoring_result,
+    )
