@@ -63,10 +63,13 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     # 3. Kích hoạt bộ xử lý lỗi toàn cục (Global Error Handlers)
     register_exception_handlers(app)
 
-    # 4. Gắn các API Routers v1 vào ứng dụng
+    # 4. Lưu settings vào app state để các router con truy cập được
+    app.state.settings = settings
+
+    # 5. Gắn các API Routers v1 vào ứng dụng
     app.include_router(api_router, prefix="/api/v1")
 
-    # 5. Các endpoint cơ bản ban đầu
+    # 5. Endpoint gốc kiểm tra API
     @app.get("/", tags=["General"])
     async def root() -> dict[str, str]:
         """Endpoint gốc kiểm tra API còn sống."""
@@ -75,17 +78,6 @@ def create_application(settings: Settings | None = None) -> FastAPI:
             "version": settings.APP_VERSION,
             "status": "online",
             "docs": "/docs" if not settings.is_production else "disabled",
-        }
-
-    @app.get("/api/v1/health", tags=["Health"])
-    async def health_check() -> dict[str, Any]:
-        """Health check endpoint cung cấp metadata hệ thống."""
-        return {
-            "status": "healthy",
-            "service": "webguard-backend",
-            "version": settings.APP_VERSION,
-            "environment": settings.ENV,
-            "demo_mode": settings.DEMO_MODE,
         }
 
     return app

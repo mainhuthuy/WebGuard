@@ -61,6 +61,12 @@ def test_health_check_endpoint(client: TestClient) -> None:
     assert data["status"] == "healthy"
     assert data["service"] == "webguard-backend"
     assert data["environment"] == "testing"
+    assert "python_version" in data
+    assert "started_at" in data
+    assert "uptime_seconds" in data
+    assert isinstance(data["uptime_seconds"], float)
+    assert "total_scans" in data
+    assert isinstance(data["total_scans"], int)
 
 
 def test_cors_headers(client: TestClient) -> None:
