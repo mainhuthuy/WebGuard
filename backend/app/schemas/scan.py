@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 import ipaddress
+from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
@@ -20,6 +21,15 @@ class ScanStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class ScanEventType(str, Enum):
+    START = "start"
+    MODULE_START = "module_start"
+    MODULE_COMPLETED = "module_completed"
+    SCORING = "scoring"
+    COMPLETE = "complete"
+    ERROR = "error"
 
 
 class ScanCreateRequest(BaseModel):
@@ -98,3 +108,20 @@ class ScanResponse(BaseModel):
     total_findings: int
     findings: list[Finding]
     scoring: ScoringResult
+
+
+class ScanStreamEvent(BaseModel):
+    """Cấu trúc dữ liệu cho mỗi sự kiện bắn về client qua SSE stream."""
+
+    event: ScanEventType = Field(..., description="Loại sự kiện")
+    scan_id: str = Field(..., description="Mã định danh lượt quét")
+    progress: int = Field(..., ge=0, le=100, description="Tiến độ quét (0-100%)")
+    message: str = Field(..., description="Mô tả thông điệp gửi tới người dùng")
+    module: str | None = Field(default=None, description="Tên module đang xử lý")
+    findings: list[Finding] | None = Field(
+        default=None, description="Danh sách các lỗ hổng mới phát hiện trong bước này"
+    )
+    data: dict[str, Any] | None = Field(
+        default=None, description="Dữ liệu tổng hợp (như điểm số, kết quả hoàn chỉnh)"
+    )
+

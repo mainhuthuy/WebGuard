@@ -1,13 +1,23 @@
 """API routes for security scanning operations."""
 
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+import json
 import logging
 from typing import Any
 import uuid
 
 from fastapi import APIRouter, status
+from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 
-from app.schemas.scan import ScanCreateRequest, ScanCreateResponse, ScanStatus
+from app.core.errors import ScanNotFoundException
+from app.modules.scanner import Scanner
+from app.schemas.scan import (
+    ScanCreateRequest,
+    ScanCreateResponse,
+    ScanEventType,
+    ScanStatus,
+)
 
 logger = logging.getLogger("app.api.v1.scan")
 
@@ -50,3 +60,85 @@ async def create_scan(payload: ScanCreateRequest) -> ScanCreateResponse:
         status=ScanStatus.PENDING,
         created_at=now,
     )
+
+
+@router.get(
+    "/{scan_id}/stream",
+    summary="Theo dõi tiến trình quét theo thời gian thực (SSE)",
+    description="Mở luồng Server-Sent Events (SSE) để nhận tiến độ quét từng bước.",
+    response_class=EventSourceResponse,
+)
+async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
+    """Stream tiến trình quét từng bước về client qua Server-Sent Events."""
+    if scan_id not in scan_jobs:
+        raise ScanNotFoundException(scan_id=scan_id)
+
+    job = scan_jobs[scan_id]
+
+    async def event_generator() -> AsyncGenerator[ServerSentEvent, None]:
+        # Trường hợp 1: Lượt quét đã hoàn thành trước đó (khi client kết nối lại)
+        if job["status"] == ScanStatus.COMPLETED:
+            completed_findings: list[dict[str, Any]] = job.get("findings") or []
+            scoring_data: dict[str, Any] = job.get("scoring") or {}
+            replayed_event: dict[str, Any] = {
+                "event": ScanEventType.COMPLETE.value,
+                "scan_id": scan_id,
+                "progress": 100,
+                "message": "Phiên quét đã hoàn tất từ trước.",
+                "module": None,
+                "findings": completed_findings,
+                "data": {
+                    "url": job["target_url"],
+                    "total_findings": len(completed_findings),
+                    "scoring": scoring_data,
+                },
+            }
+            yield ServerSentEvent(
+                event=ScanEventType.COMPLETE.value,
+                data=json.dumps(replayed_event, default=str, ensure_ascii=False),
+            )
+            return
+
+        # Trường hợp 2: Bắt đầu tiến trình quét và phát sự kiện
+        job["status"] = ScanStatus.RUNNING
+        scanner = Scanner()
+        target_url = job["target_url"]
+
+        try:
+            async for step_event in scanner.scan_stream(url=target_url, scan_id=scan_id):
+                # Lưu kết quả khi quét xong
+                if step_event["event"] == ScanEventType.COMPLETE.value:
+                    job["status"] = ScanStatus.COMPLETED
+                    job["findings"] = step_event["findings"]
+                    event_data = step_event.get("data")
+                    if isinstance(event_data, dict) and "scoring" in event_data:
+                        job["scoring"] = event_data["scoring"]
+                    else:
+                        empty_scoring: dict[str, Any] = {}
+                        job["scoring"] = empty_scoring
+                    job["completed_at"] = datetime.now(timezone.utc)
+
+                yield ServerSentEvent(
+                    event=step_event["event"],
+                    data=json.dumps(step_event, default=str, ensure_ascii=False),
+                )
+        except Exception as exc:
+            logger.exception(f"Lỗi sự cố khi quét scan_id={scan_id}: {exc}")
+            job["status"] = ScanStatus.FAILED
+            empty_findings: list[dict[str, Any]] = []
+            error_event: dict[str, Any] = {
+                "event": ScanEventType.ERROR.value,
+                "scan_id": scan_id,
+                "progress": 100,
+                "message": f"Quá trình quét gặp sự cố ngoài dự kiến: {exc}",
+                "module": None,
+                "findings": empty_findings,
+                "data": None,
+            }
+            yield ServerSentEvent(
+                event=ScanEventType.ERROR.value,
+                data=json.dumps(error_event, default=str, ensure_ascii=False),
+            )
+
+    return EventSourceResponse(event_generator())
+

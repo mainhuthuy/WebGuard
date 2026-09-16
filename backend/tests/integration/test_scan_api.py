@@ -1,5 +1,7 @@
 """Integration tests for Scan API endpoints."""
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 import pytest
 
@@ -61,3 +63,57 @@ def test_create_scan_blocked_private_ip_ssrf(client: TestClient) -> None:
     response = client.post("/api/v1/scan", json=payload)
 
     assert response.status_code == 422
+
+
+def test_stream_scan_not_found(client: TestClient) -> None:
+    """Kiểm tra khi scan_id không tồn tại thì trả về HTTP 404."""
+    response = client.get("/api/v1/scan/non-existent-uuid/stream")
+
+    assert response.status_code == 404
+    data = response.json()
+    assert data["success"] is False
+    assert data["error"]["code"] == "SCAN_NOT_FOUND"
+
+
+def test_stream_scan_success_and_replay(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kiểm tra luồng stream SSE hoạt động đầy đủ từ start đến complete và tính năng replay."""
+    # 1. Tạo một scan mới
+    create_res = client.post("/api/v1/scan", json={"url": "https://example.com"})
+    assert create_res.status_code == 201
+    scan_id = create_res.json()["scan_id"]
+
+    # 2. Mock các module quét để test chạy nhanh và độc lập mạng
+    async def mock_scan(self: Any, url: str) -> list[dict[str, Any]]:
+        module_name = getattr(self, "name", "mock")
+        return [
+            {
+                "module": module_name,
+                "name": f"Mock {module_name} issue",
+                "severity": "medium",
+                "description": "Mock finding for test",
+                "remediation": "Fix it",
+                "url": url,
+            }
+        ]
+
+    from app.modules.base import BaseModule
+    monkeypatch.setattr(BaseModule, "scan", mock_scan)
+
+    # 3. Kết nối tới SSE stream
+    stream_res = client.get(f"/api/v1/scan/{scan_id}/stream")
+    assert stream_res.status_code == 200
+    assert "text/event-stream" in stream_res.headers["content-type"]
+
+    body = stream_res.text
+    assert "event: start" in body
+    assert "event: module_start" in body
+    assert "event: module_completed" in body
+    assert "event: scoring" in body
+    assert "event: complete" in body
+
+    # 4. Kiểm tra replay: Khi scan đã hoàn tất, gọi lại stream sẽ trả ngay sự kiện complete
+    replay_res = client.get(f"/api/v1/scan/{scan_id}/stream")
+    assert replay_res.status_code == 200
+    assert "event: complete" in replay_res.text
+    assert "Phiên quét đã hoàn tất từ trước" in replay_res.text
+
