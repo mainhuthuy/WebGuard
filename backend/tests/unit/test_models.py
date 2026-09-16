@@ -1,5 +1,4 @@
-"""Unit tests for SQLAlchemy models and database session."""
-
+from collections.abc import Generator
 from datetime import datetime, timezone
 import uuid
 
@@ -13,7 +12,7 @@ from app.models.scan import ScanModel
 
 
 @pytest.fixture
-def db_session() -> Session:
+def db_session() -> Generator[Session, None, None]:
     """Tạo database SQLite in-memory độc lập cho mỗi test case."""
     test_engine = create_engine(
         "sqlite:///:memory:",
