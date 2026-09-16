@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 import logging
 import platform
 
+from typing import Any
+
 from fastapi import APIRouter, Request, status
 
 from app.api.v1.scan import scan_jobs
@@ -23,7 +25,7 @@ _started_at = datetime.now(timezone.utc)
     description="Trả về metadata hệ thống bao gồm uptime, phiên bản, "
     "môi trường và thống kê quét.",
 )
-async def health_check(request: Request) -> dict:
+async def health_check(request: Request) -> dict[str, Any]:
     """Health check endpoint cung cấp metadata và thống kê hệ thống."""
     settings = request.app.state.settings
     now = datetime.now(timezone.utc)
