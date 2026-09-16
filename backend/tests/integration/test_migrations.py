@@ -1,0 +1,53 @@
+"""Integration test for Alembic database migrations."""
+
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
+import pytest
+from sqlalchemy import create_engine, inspect
+
+from app.core import get_settings
+
+
+@pytest.fixture
+def test_alembic_config(tmp_path: Path) -> Config:
+    """Tạo config Alembic trỏ đến database tạm thời để kiểm thử upgrade và downgrade."""
+    test_db_path = tmp_path / "test_migration.db"
+    backend_dir = Path(__file__).resolve().parent.parent.parent
+    ini_path = backend_dir / "alembic.ini"
+
+    config = Config(str(ini_path))
+    config.set_main_option("sqlalchemy.url", f"sqlite:///{test_db_path}")
+    return config
+
+
+def test_alembic_upgrade_and_downgrade(test_alembic_config: Config) -> None:
+    """Kiểm tra quy trình chạy upgrade lên head và downgrade về base."""
+    db_url = test_alembic_config.get_main_option("sqlalchemy.url")
+    assert db_url is not None
+    engine = create_engine(db_url)
+
+    # 1. Chạy upgrade head -> Bảng scans và findings phải xuất hiện
+    command.upgrade(test_alembic_config, "head")
+
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    assert "alembic_version" in tables
+    assert "scans" in tables
+    assert "findings" in tables
+
+    # Kiểm tra các cột trong bảng scans
+    scan_columns = [col["name"] for col in inspector.get_columns("scans")]
+    assert "id" in scan_columns
+    assert "target_url" in scan_columns
+    assert "status" in scan_columns
+    assert "score" in scan_columns
+
+    # 2. Chạy downgrade base -> Các bảng phải được dọn dẹp sạch
+    command.downgrade(test_alembic_config, "base")
+
+    inspector = inspect(engine)
+    tables_after = inspector.get_table_names()
+    assert "scans" not in tables_after
+    assert "findings" not in tables_after
