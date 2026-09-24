@@ -110,24 +110,80 @@ class ScanService:
                 logger.info(f"ScanService: Phiên quét {scan_id} đã bị hủy trong quá trình chạy.")
                 return scan
 
+            # Hỗ trợ cả dict (từ Scanner.scan) và object ScanResponse
+            findings_data: list[Any] = (
+                scan_result.get("findings", [])
+                if isinstance(scan_result, dict)
+                else getattr(scan_result, "findings", [])
+            )
+            scoring_obj = (
+                scan_result.get("scoring", {})
+                if isinstance(scan_result, dict)
+                else getattr(scan_result, "scoring", {})
+            )
+            score_val = (
+                scoring_obj.get("score")
+                if isinstance(scoring_obj, dict)
+                else getattr(scoring_obj, "score", None)
+            )
+            grade_val = (
+                scoring_obj.get("grade")
+                if isinstance(scoring_obj, dict)
+                else getattr(scoring_obj, "grade", None)
+            )
+
             # Lưu các findings vào DB
-            for finding in scan_result.findings:
+            for finding in findings_data:
+                module_val = (
+                    finding.get("module", "unknown")
+                    if isinstance(finding, dict)
+                    else getattr(finding, "module", "unknown")
+                )
+                name_val = (
+                    finding.get("name", "Unknown Issue")
+                    if isinstance(finding, dict)
+                    else getattr(finding, "name", "Unknown Issue")
+                )
+                sev_raw = (
+                    finding.get("severity", "low")
+                    if isinstance(finding, dict)
+                    else getattr(finding, "severity", "low")
+                )
+                sev_val = (
+                    sev_raw.value
+                    if hasattr(sev_raw, "value")
+                    else str(sev_raw)
+                )
+                desc_val = (
+                    finding.get("description", "")
+                    if isinstance(finding, dict)
+                    else getattr(finding, "description", "")
+                )
+                rem_val = (
+                    finding.get("remediation", "")
+                    if isinstance(finding, dict)
+                    else getattr(finding, "remediation", "")
+                )
+                url_val = (
+                    finding.get("url")
+                    if isinstance(finding, dict)
+                    else getattr(finding, "url", None)
+                ) or scan.target_url
+
                 finding_model = FindingModel(
                     scan_id=scan.id,
-                    module=finding.module,
-                    name=finding.name,
-                    severity=finding.severity.value
-                    if hasattr(finding.severity, "value")
-                    else str(finding.severity),
-                    description=finding.description,
-                    remediation=finding.remediation,
-                    target_url=finding.url or scan.target_url,
+                    module=module_val,
+                    name=name_val,
+                    severity=sev_val,
+                    description=desc_val,
+                    remediation=rem_val,
+                    target_url=url_val,
                 )
                 db.add(finding_model)
 
             # Cập nhật kết quả chấm điểm và đánh dấu hoàn thành
-            scan.score = scan_result.scoring.score
-            scan.grade = scan_result.scoring.grade
+            scan.score = score_val
+            scan.grade = grade_val
             scan.status = ScanStatus.COMPLETED.value
             scan.completed_at = datetime.now(timezone.utc)
 
@@ -135,9 +191,10 @@ class ScanService:
             db.refresh(scan)
             logger.info(
                 f"ScanService: Hoàn tất quét {scan_id} - Score: {scan.score} ({scan.grade}), "
-                f"Total findings: {len(scan_result.findings)}"
+                f"Total findings: {len(findings_data)}"
             )
             return scan
+
 
         except asyncio.CancelledError:
             logger.warning(f"ScanService: Quá trình quét {scan_id} bị hủy (CancelledError)")
