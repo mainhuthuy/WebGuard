@@ -80,96 +80,19 @@ async def stream_scan_progress(
     if not scan and scan_id not in scan_jobs:
         raise ScanNotFoundException(scan_id=scan_id)
 
-    # Đảm bảo record trong in-memory đồng bộ
-    if scan and scan_id not in scan_jobs:
-        scan_jobs[scan_id] = {
-            "scan_id": scan.id,
-            "target_url": scan.target_url,
-            "status": ScanStatus(scan.status),
-            "created_at": scan.created_at,
-            "findings": [
-                {
-                    "module": f.module,
-                    "name": f.name,
-                    "severity": f.severity,
-                    "description": f.description,
-                    "remediation": f.remediation,
-                    "url": f.target_url,
-                }
-                for f in scan.findings
-            ],
-            "scoring": (
-                {"score": scan.score, "grade": scan.grade}
-                if scan.score is not None
-                else {}
-            ),
-            "completed_at": scan.completed_at,
-        }
-
     job = scan_jobs.get(scan_id)
 
     async def event_generator() -> AsyncGenerator[ServerSentEvent, None]:
-        # Nếu scan đã hoàn tất từ trước -> Replay
-        if (scan and scan.status == ScanStatus.COMPLETED.value) or (
-            job and job.get("status") == ScanStatus.COMPLETED
-        ):
-            completed_findings = (
-                [
-                    {
-                        "module": f.module,
-                        "name": f.name,
-                        "severity": f.severity,
-                        "description": f.description,
-                        "remediation": f.remediation,
-                        "url": f.target_url,
-                    }
-                    for f in scan.findings
-                ]
-                if scan and scan.findings
-                else (job.get("findings") if job else [])
-            )
-            scoring_data = (
-                {
-                    "score": scan.score,
-                    "grade": scan.grade,
-                    "total_findings": len(completed_findings),
-                }
-                if scan and scan.score is not None
-                else (job.get("scoring") if job else {})
-            )
-            target_url = (
-                scan.target_url if scan else (job.get("target_url") if job else "")
-            )
-            replayed_event = {
-                "event": ScanEventType.COMPLETE.value,
-                "scan_id": scan_id,
-                "progress": 100,
-                "message": "Phiên quét đã hoàn tất từ trước.",
-                "module": None,
-                "findings": completed_findings,
-                "data": {
-                    "url": target_url,
-                    "total_findings": len(completed_findings),
-                    "scoring": scoring_data,
-                },
-            }
-            yield ServerSentEvent(
-                event=ScanEventType.COMPLETE.value,
-                data=json.dumps(replayed_event, default=str, ensure_ascii=False),
-            )
-            return
-
-        # Thực hiện stream thông qua ScanService
         try:
             if job:
                 job["status"] = ScanStatus.RUNNING
 
             async for step_event in scan_service.stream_scan(scan_id=scan_id, db=db):
-                # Đồng bộ in-memory job
+                # Đồng bộ in-memory job cho tương thích ngược
                 if job:
                     if step_event["event"] == ScanEventType.COMPLETE.value:
                         job["status"] = ScanStatus.COMPLETED
-                        job["findings"] = step_event.get("findings", [])
+                        job["findings"] = step_event.get("findings") or []
                         event_data = step_event.get("data")
                         if isinstance(event_data, dict) and "scoring" in event_data:
                             job["scoring"] = event_data["scoring"]
@@ -186,13 +109,14 @@ async def stream_scan_progress(
             logger.exception(f"Lỗi sự cố khi quét scan_id={scan_id}: {exc}")
             if job:
                 job["status"] = ScanStatus.FAILED
-            error_event = {
+            empty_findings: list[dict[str, Any]] = []
+            error_event: dict[str, Any] = {
                 "event": ScanEventType.ERROR.value,
                 "scan_id": scan_id,
                 "progress": 100,
                 "message": f"Quá trình quét gặp sự cố ngoài dự kiến: {exc}",
                 "module": None,
-                "findings": [],
+                "findings": empty_findings,
                 "data": None,
             }
             yield ServerSentEvent(
@@ -201,6 +125,7 @@ async def stream_scan_progress(
             )
 
     return EventSourceResponse(event_generator())
+
 
 
 @router.get(
