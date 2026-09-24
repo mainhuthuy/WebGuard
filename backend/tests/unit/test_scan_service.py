@@ -1,8 +1,9 @@
 """Unit tests for ScanService lifecycle management."""
 
 import asyncio
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from datetime import datetime, timezone
+
 from typing import Any
 import uuid
 
@@ -249,7 +250,9 @@ async def test_stream_scan_persists_to_db_and_replay(
     """Kiểm tra stream_scan phát sự kiện, lưu DB và có thể replay lại khi hoàn tất."""
     scan = scan_service.create_scan(db=db_session, target_url="https://example.com")
 
-    async def mock_scan_stream(self: Any, url: str, scan_id: str) -> Any:
+    async def mock_scan_stream(
+        self: Any, url: str, scan_id: str
+    ) -> AsyncGenerator[dict[str, Any], None]:
         yield {
             "event": ScanEventType.START.value,
             "scan_id": scan_id,
@@ -314,9 +317,14 @@ async def test_stream_scan_error_handling(
     """Kiểm tra stream_scan bắt ngoại lệ, cập nhật FAILED và yield sự kiện ERROR."""
     scan = scan_service.create_scan(db=db_session, target_url="https://example.com")
 
-    async def mock_stream_error(self: Any, url: str, scan_id: str) -> Any:
+    async def mock_stream_error(
+        self: Any, url: str, scan_id: str
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        if False:
+            empty_item: dict[str, Any] = {}
+            yield empty_item
         raise RuntimeError("Unexpected stream error")
-        yield {}  # Make it a generator
+
 
     monkeypatch.setattr(Scanner, "scan_stream", mock_stream_error)
 
