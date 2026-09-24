@@ -362,13 +362,14 @@ class ScanService:
             scan.completed_at = datetime.now(timezone.utc)
             db.commit()
 
-            error_event = {
+            empty_findings: list[dict[str, Any]] = []
+            error_event: dict[str, Any] = {
                 "event": ScanEventType.ERROR.value,
                 "scan_id": scan_id,
                 "progress": 100,
                 "message": f"Quá trình quét gặp sự cố ngoài dự kiến: {exc}",
                 "module": None,
-                "findings": [],
+                "findings": empty_findings,
                 "data": None,
             }
             yield error_event
