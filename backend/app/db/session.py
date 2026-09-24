@@ -45,3 +45,11 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def init_db() -> None:
+    """Khởi tạo toàn bộ database tables nếu chưa tồn tại."""
+    import app.models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
+

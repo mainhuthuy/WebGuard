@@ -5,14 +5,16 @@ from datetime import datetime, timezone
 import json
 import logging
 from typing import Any
-import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 
 from app.core.errors import ScanNotFoundException
-from app.modules.scanner import Scanner
+from app.db.session import get_db
 from app.schemas.scan import (
+    Finding,
+    ScanCancelResponse,
     ScanCreateRequest,
     ScanCreateResponse,
     ScanDetailResponse,
@@ -20,12 +22,13 @@ from app.schemas.scan import (
     ScanStatus,
     ScoringResult,
 )
+from app.services.scan import scan_service
 
 logger = logging.getLogger("app.api.v1.scan")
 
 router = APIRouter(prefix="/scan", tags=["Scan"])
 
-# Bộ nhớ tạm (in-memory store) lưu trạng thái các lượt quét
+# Bộ nhớ tạm (in-memory store) lưu trạng thái các lượt quét để tương thích ngược và cache nhanh
 scan_jobs: dict[str, dict[str, Any]] = {}
 
 
@@ -36,31 +39,29 @@ scan_jobs: dict[str, dict[str, Any]] = {}
     summary="Khởi tạo một phiên quét bảo mật mới",
     description="Nhận URL mục tiêu, kiểm tra tính hợp lệ và trả về scan_id để theo dõi tiến trình.",
 )
-async def create_scan(payload: ScanCreateRequest) -> ScanCreateResponse:
-    """Tạo lượt quét mới và sinh scan_id."""
-    scan_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
+async def create_scan(
+    payload: ScanCreateRequest,
+    db: Session = Depends(get_db),
+) -> ScanCreateResponse:
+    """Tạo lượt quét mới qua ScanService và lưu vào Database."""
+    scan = scan_service.create_scan(db=db, target_url=payload.url)
 
-    # Khai báo rõ kiểu dữ liệu của list findings rỗng
-    empty_findings: list[dict[str, Any]] = []
-
-    # Lưu tạm thông tin scan vào bộ nhớ
-    scan_record: dict[str, Any] = {
-        "scan_id": scan_id,
-        "target_url": payload.url,
-        "status": ScanStatus.PENDING,
-        "created_at": now,
-        "findings": empty_findings,
+    # Đồng bộ cache scan_jobs để tương thích ngược
+    scan_jobs[scan.id] = {
+        "scan_id": scan.id,
+        "target_url": scan.target_url,
+        "status": ScanStatus(scan.status),
+        "created_at": scan.created_at,
+        "findings": [],
     }
-    scan_jobs[scan_id] = scan_record
 
-    logger.info(f"Đã tạo phiên quét mới: id={scan_id}, target={payload.url}")
+    logger.info(f"Đã tạo phiên quét mới: id={scan.id}, target={payload.url}")
 
     return ScanCreateResponse(
-        scan_id=scan_id,
-        target_url=payload.url,
-        status=ScanStatus.PENDING,
-        created_at=now,
+        scan_id=scan.id,
+        target_url=scan.target_url,
+        status=ScanStatus(scan.status),
+        created_at=scan.created_at,
     )
 
 
@@ -70,19 +71,76 @@ async def create_scan(payload: ScanCreateRequest) -> ScanCreateResponse:
     description="Mở luồng Server-Sent Events (SSE) để nhận tiến độ quét từng bước.",
     response_class=EventSourceResponse,
 )
-async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
-    """Stream tiến trình quét từng bước về client qua Server-Sent Events."""
-    if scan_id not in scan_jobs:
+async def stream_scan_progress(
+    scan_id: str,
+    db: Session = Depends(get_db),
+) -> EventSourceResponse:
+    """Stream tiến trình quét từng bước về client qua Server-Sent Events và lưu kết quả vào DB."""
+    scan = scan_service.get_scan(db, scan_id)
+    if not scan and scan_id not in scan_jobs:
         raise ScanNotFoundException(scan_id=scan_id)
 
-    job = scan_jobs[scan_id]
+    # Đảm bảo record trong in-memory đồng bộ
+    if scan and scan_id not in scan_jobs:
+        scan_jobs[scan_id] = {
+            "scan_id": scan.id,
+            "target_url": scan.target_url,
+            "status": ScanStatus(scan.status),
+            "created_at": scan.created_at,
+            "findings": [
+                {
+                    "module": f.module,
+                    "name": f.name,
+                    "severity": f.severity,
+                    "description": f.description,
+                    "remediation": f.remediation,
+                    "url": f.target_url,
+                }
+                for f in scan.findings
+            ],
+            "scoring": (
+                {"score": scan.score, "grade": scan.grade}
+                if scan.score is not None
+                else {}
+            ),
+            "completed_at": scan.completed_at,
+        }
+
+    job = scan_jobs.get(scan_id)
 
     async def event_generator() -> AsyncGenerator[ServerSentEvent, None]:
-        # Trường hợp 1: Lượt quét đã hoàn thành trước đó (khi client kết nối lại)
-        if job["status"] == ScanStatus.COMPLETED:
-            completed_findings: list[dict[str, Any]] = job.get("findings") or []
-            scoring_data: dict[str, Any] = job.get("scoring") or {}
-            replayed_event: dict[str, Any] = {
+        # Nếu scan đã hoàn tất từ trước -> Replay
+        if (scan and scan.status == ScanStatus.COMPLETED.value) or (
+            job and job.get("status") == ScanStatus.COMPLETED
+        ):
+            completed_findings = (
+                [
+                    {
+                        "module": f.module,
+                        "name": f.name,
+                        "severity": f.severity,
+                        "description": f.description,
+                        "remediation": f.remediation,
+                        "url": f.target_url,
+                    }
+                    for f in scan.findings
+                ]
+                if scan and scan.findings
+                else (job.get("findings") if job else [])
+            )
+            scoring_data = (
+                {
+                    "score": scan.score,
+                    "grade": scan.grade,
+                    "total_findings": len(completed_findings),
+                }
+                if scan and scan.score is not None
+                else (job.get("scoring") if job else {})
+            )
+            target_url = (
+                scan.target_url if scan else (job.get("target_url") if job else "")
+            )
+            replayed_event = {
                 "event": ScanEventType.COMPLETE.value,
                 "scan_id": scan_id,
                 "progress": 100,
@@ -90,7 +148,7 @@ async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
                 "module": None,
                 "findings": completed_findings,
                 "data": {
-                    "url": job["target_url"],
+                    "url": target_url,
                     "total_findings": len(completed_findings),
                     "scoring": scoring_data,
                 },
@@ -101,24 +159,24 @@ async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
             )
             return
 
-        # Trường hợp 2: Bắt đầu tiến trình quét và phát sự kiện
-        job["status"] = ScanStatus.RUNNING
-        scanner = Scanner()
-        target_url = job["target_url"]
-
+        # Thực hiện stream thông qua ScanService
         try:
-            async for step_event in scanner.scan_stream(url=target_url, scan_id=scan_id):
-                # Lưu kết quả khi quét xong
-                if step_event["event"] == ScanEventType.COMPLETE.value:
-                    job["status"] = ScanStatus.COMPLETED
-                    job["findings"] = step_event["findings"]
-                    event_data = step_event.get("data")
-                    if isinstance(event_data, dict) and "scoring" in event_data:
-                        job["scoring"] = event_data["scoring"]
-                    else:
-                        empty_scoring: dict[str, Any] = {}
-                        job["scoring"] = empty_scoring
-                    job["completed_at"] = datetime.now(timezone.utc)
+            if job:
+                job["status"] = ScanStatus.RUNNING
+
+            async for step_event in scan_service.stream_scan(scan_id=scan_id, db=db):
+                # Đồng bộ in-memory job
+                if job:
+                    if step_event["event"] == ScanEventType.COMPLETE.value:
+                        job["status"] = ScanStatus.COMPLETED
+                        job["findings"] = step_event.get("findings", [])
+                        event_data = step_event.get("data")
+                        if isinstance(event_data, dict) and "scoring" in event_data:
+                            job["scoring"] = event_data["scoring"]
+                        job["completed_at"] = datetime.now(timezone.utc)
+                    elif step_event["event"] == ScanEventType.ERROR.value:
+                        job["status"] = ScanStatus.FAILED
+                        job["completed_at"] = datetime.now(timezone.utc)
 
                 yield ServerSentEvent(
                     event=step_event["event"],
@@ -126,15 +184,15 @@ async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
                 )
         except Exception as exc:
             logger.exception(f"Lỗi sự cố khi quét scan_id={scan_id}: {exc}")
-            job["status"] = ScanStatus.FAILED
-            empty_findings: list[dict[str, Any]] = []
-            error_event: dict[str, Any] = {
+            if job:
+                job["status"] = ScanStatus.FAILED
+            error_event = {
                 "event": ScanEventType.ERROR.value,
                 "scan_id": scan_id,
                 "progress": 100,
                 "message": f"Quá trình quét gặp sự cố ngoài dự kiến: {exc}",
                 "module": None,
-                "findings": empty_findings,
+                "findings": [],
                 "data": None,
             }
             yield ServerSentEvent(
@@ -152,8 +210,45 @@ async def stream_scan_progress(scan_id: str) -> EventSourceResponse:
     summary="Lấy chi tiết kết quả một lượt quét",
     description="Truy vấn toàn bộ thông tin và findings của một phiên quét đã tạo.",
 )
-async def get_scan_result(scan_id: str) -> ScanDetailResponse:
-    """Trả về chi tiết đầy đủ của một phiên quét theo scan_id."""
+async def get_scan_result(
+    scan_id: str,
+    db: Session = Depends(get_db),
+) -> ScanDetailResponse:
+    """Trả về chi tiết đầy đủ của một phiên quét theo scan_id (lấy từ Database hoặc cache)."""
+    scan = scan_service.get_scan(db, scan_id)
+
+    if scan:
+        findings_list = [
+            Finding(
+                module=f.module,
+                name=f.name,
+                severity=f.severity,
+                description=f.description,
+                remediation=f.remediation,
+                url=f.target_url,
+            )
+            for f in scan.findings
+        ]
+        scoring_result: ScoringResult | None = None
+        if scan.score is not None and scan.grade is not None:
+            scoring_result = ScoringResult(
+                score=scan.score,
+                grade=scan.grade,
+                total_findings=len(findings_list),
+            )
+
+        return ScanDetailResponse(
+            scan_id=scan.id,
+            target_url=scan.target_url,
+            status=ScanStatus(scan.status),
+            created_at=scan.created_at,
+            completed_at=scan.completed_at,
+            total_findings=len(findings_list),
+            findings=findings_list,
+            scoring=scoring_result,
+        )
+
+    # Fallback kiểm tra trong in-memory scan_jobs nếu có
     if scan_id not in scan_jobs:
         raise ScanNotFoundException(scan_id=scan_id)
 
@@ -161,10 +256,9 @@ async def get_scan_result(scan_id: str) -> ScanDetailResponse:
     findings: list[dict[str, Any]] = job.get("findings") or []
     scoring_data = job.get("scoring")
 
-    # Đóng gói kết quả chấm điểm (chỉ khi quét hoàn tất)
-    scoring_result: ScoringResult | None = None
+    scoring_res: ScoringResult | None = None
     if isinstance(scoring_data, dict) and "score" in scoring_data:
-        scoring_result = ScoringResult(
+        scoring_res = ScoringResult(
             score=scoring_data["score"],
             grade=scoring_data["grade"],
             total_findings=scoring_data.get("total_findings", len(findings)),
@@ -178,5 +272,40 @@ async def get_scan_result(scan_id: str) -> ScanDetailResponse:
         completed_at=job.get("completed_at"),
         total_findings=len(findings),
         findings=findings,
-        scoring=scoring_result,
+        scoring=scoring_res,
+    )
+
+
+@router.post(
+    "/{scan_id}/cancel",
+    response_model=ScanCancelResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Hủy một phiên quét đang diễn ra",
+    description="Hủy tiến trình quét bảo mật nếu đang ở trạng thái pending hoặc running.",
+)
+async def cancel_scan(
+    scan_id: str,
+    db: Session = Depends(get_db),
+) -> ScanCancelResponse:
+    """Hủy một lượt quét đang chờ hoặc đang chạy."""
+    scan = scan_service.get_scan(db, scan_id)
+    if not scan and scan_id not in scan_jobs:
+        raise ScanNotFoundException(scan_id=scan_id)
+
+    success = scan_service.cancel_scan(db, scan_id)
+    if not success:
+        # Nếu scan đã hoàn tất hoặc thất bại trước đó
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Không thể hủy phiên quét {scan_id} vì đã kết thúc hoặc không thể hủy.",
+        )
+
+    # Đồng bộ in-memory cache
+    if scan_id in scan_jobs:
+        scan_jobs[scan_id]["status"] = ScanStatus.CANCELLED
+
+    return ScanCancelResponse(
+        scan_id=scan_id,
+        status=ScanStatus.CANCELLED,
+        message=f"Đã hủy thành công phiên quét {scan_id}",
     )

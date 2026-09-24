@@ -22,15 +22,22 @@ logger = logging.getLogger("app.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Quản lý vòng đời ứng dụng: Khởi chạy logging và thông báo khi bật/tắt server."""
+    """Quản lý vòng đời ứng dụng: Khởi chạy logging, DB tables và thông báo khi bật/tắt server."""
     settings = get_settings()
     setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)
+
+    # Khởi tạo tables trong database nếu chưa có
+    from app.db.session import init_db
+
+    init_db()
+
     logger.info(
         f"Khởi động {settings.APP_NAME} v{settings.APP_VERSION} "
         f"[env={settings.ENV}, debug={settings.DEBUG}]"
     )
     yield
     logger.info(f"Đang tắt ứng dụng {settings.APP_NAME}")
+
 
 
 def create_application(settings: Settings | None = None) -> FastAPI:

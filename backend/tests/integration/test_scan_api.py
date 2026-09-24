@@ -190,3 +190,30 @@ def test_get_scan_completed(client: TestClient, monkeypatch: pytest.MonkeyPatch)
     assert data["completed_at"] is not None
 
 
+def test_cancel_scan_endpoint_success(client: TestClient) -> None:
+    """Kiểm tra gọi endpoint hủy phiên quét đang pending."""
+    # 1. Tạo scan
+    create_res = client.post("/api/v1/scan", json={"url": "https://example.com"})
+    assert create_res.status_code == 201
+    scan_id = create_res.json()["scan_id"]
+
+    # 2. Gọi POST /scan/{id}/cancel
+    cancel_res = client.post(f"/api/v1/scan/{scan_id}/cancel")
+    assert cancel_res.status_code == 200
+    cancel_data = cancel_res.json()
+    assert cancel_data["scan_id"] == scan_id
+    assert cancel_data["status"] == "cancelled"
+
+    # 3. Lấy lại kết quả scan -> trạng thái phải là cancelled
+    get_res = client.get(f"/api/v1/scan/{scan_id}")
+    assert get_res.status_code == 200
+    assert get_res.json()["status"] == "cancelled"
+
+
+def test_cancel_scan_endpoint_not_found(client: TestClient) -> None:
+    """Kiểm tra hủy scan không tồn tại trả về 404."""
+    cancel_res = client.post("/api/v1/scan/non-existent-uuid/cancel")
+    assert cancel_res.status_code == 404
+
+
+

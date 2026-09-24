@@ -21,6 +21,8 @@ class ScanStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
+
 
 
 class ScanEventType(str, Enum):
@@ -143,4 +145,16 @@ class ScanStreamEvent(BaseModel):
     data: dict[str, Any] | None = Field(
         default=None, description="Dữ liệu tổng hợp (như điểm số, kết quả hoàn chỉnh)"
     )
+
+
+class ScanCancelResponse(BaseModel):
+    """Thông tin trả về khi yêu cầu hủy phiên quét."""
+
+    scan_id: str = Field(..., description="Mã định danh lượt quét")
+    status: ScanStatus = Field(default=ScanStatus.CANCELLED, description="Trạng thái sau khi hủy")
+    message: str = Field(
+        default="Đã hủy phiên quét thành công",
+        description="Thông báo kết quả thao tác hủy",
+    )
+
 
