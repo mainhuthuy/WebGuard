@@ -35,42 +35,27 @@ Tất cả các lỗi nghiệp vụ từ server (4xx, 5xx) đều có cấu trú
 
 ## 2. Health Check API (`/health`)
 
-Cung cấp thông tin trạng thái hoạt động của hệ thống phục vụ giám sát container và Kubernetes probes.
+Cung cấp thông tin trạng thái hoạt động của hệ thống phục vụ giám sát.
 
 ### 2.1. Kiểm tra sức khỏe tổng quan
 - **Endpoint:** `GET /api/v1/health`
-- **Mục đích:** Kiểm tra phiên bản và trạng thái tổng quan của service.
+- **Mục đích:** Kiểm tra trạng thái, phiên bản, uptime và thống kê tổng quan của service.
 - **Response:** `200 OK`
 ```json
 {
   "status": "healthy",
-  "version": "1.0.0",
-  "app_name": "WebGuard API"
+  "service": "webguard-backend",
+  "version": "0.1.0",
+  "environment": "development",
+  "demo_mode": false,
+  "python_version": "3.12.10",
+  "started_at": "2026-09-24T12:00:15.460574+00:00",
+  "uptime_seconds": 97.4,
+  "total_scans": 0
 }
 ```
 
-### 2.2. Liveness Probe
-- **Endpoint:** `GET /api/v1/health/live`
-- **Mục đích:** Kiểm tra container tiến trình Python có đang còn sống hay không.
-- **Response:** `200 OK`
-```json
-{
-  "status": "alive"
-}
-```
-
-### 2.3. Readiness Probe
-- **Endpoint:** `GET /api/v1/health/ready`
-- **Mục đích:** Kiểm tra khả năng kết nối tới Database trước khi nhận lưu lượng mạng.
-- **Response:**
-  - `200 OK`: Khi kết nối DB hoạt động bình thường.
-  - `503 Service Unavailable`: Khi không thể kết nối tới DB.
-```json
-{
-  "status": "ready",
-  "database": "connected"
-}
-```
+> **Lưu ý:** Các endpoint Liveness Probe (`/health/live`) và Readiness Probe (`/health/ready`) sẽ được bổ sung trong Sprint 4 (Docker & CI/CD).
 
 ---
 
@@ -84,8 +69,7 @@ Quản lý vòng đời khởi tạo, giám sát và hủy bỏ các phiên qué
 - **Request Body:**
 ```json
 {
-  "target_url": "https://example.com",
-  "run_in_background": false
+  "url": "https://example.com"
 }
 ```
 - **Response:** `201 Created`
@@ -174,39 +158,35 @@ data: {"event": "complete", "scan_id": "b3e...", "progress": 100, "message": "Qu
 
 Xuất và định dạng báo cáo kiểm toán bảo mật.
 
-### 4.1. Lấy dữ liệu báo cáo chi tiết
-- **Endpoint:** `GET /api/v1/report/{scan_id}`
-- **Mô tả:** Trả về dữ liệu tổng hợp phục vụ hiển thị báo cáo: điểm số, thời gian thực thi, thống kê lỗi theo mức độ nghiêm trọng (critical, high, medium, low, info).
-- **Response:** `200 OK`
-```json
-{
-  "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
-  "target_url": "https://example.com",
-  "status": "completed",
-  "score": 85.0,
-  "grade": "B",
-  "created_at": "2026-09-24T11:00:00Z",
-  "completed_at": "2026-09-24T11:00:08Z",
-  "duration_seconds": 8.0,
-  "severity_counts": {
-    "critical": 0,
-    "high": 1,
-    "medium": 2,
-    "low": 0,
-    "info": 1
-  },
-  "total_findings": 4,
-  "findings": [...]
-}
-```
-
-### 4.2. Xuất báo cáo (HTML / JSON Export)
+### 4.1. Xuất báo cáo (HTML / JSON Export)
 - **Endpoint:** `GET /api/v1/report/{scan_id}/export?format={html|json}`
+- **Mô tả:** Xuất báo cáo kết quả quét dưới định dạng JSON hoặc HTML. Dữ liệu bao gồm điểm số, thời gian thực thi, thống kê lỗi theo mức độ nghiêm trọng và danh sách findings.
 - **Query Parameters:**
-  - `format`: `html` (mặc định) hoặc `json`.
+  - `format`: `json` (mặc định) hoặc `html`.
 - **Response:**
-  - Với `format=html`: Trả về `text/html; charset=utf-8`, kèm header `Content-Disposition: attachment; filename="webguard_report_<id>.html"`. Báo cáo HTML được sinh bởi Jinja2 template với giao diện tối ưu chuyên nghiệp.
   - Với `format=json`: Trả về `application/json`, kèm header `Content-Disposition: attachment; filename="webguard_report_<id>.json"`.
+    ```json
+    {
+      "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
+      "target_url": "https://example.com",
+      "status": "completed",
+      "score": 85.0,
+      "grade": "B",
+      "created_at": "2026-09-24T11:00:00Z",
+      "completed_at": "2026-09-24T11:00:08Z",
+      "duration_seconds": 8.0,
+      "severity_counts": {
+        "critical": 0,
+        "high": 1,
+        "medium": 2,
+        "low": 0,
+        "info": 1
+      },
+      "total_findings": 4,
+      "findings": [...]
+    }
+    ```
+  - Với `format=html`: Trả về `text/html; charset=utf-8`, kèm header `Content-Disposition: attachment; filename="webguard_report_<id>.html"`. Báo cáo HTML được sinh bởi Jinja2 template với giao diện tối ưu chuyên nghiệp.
 
 ---
 
