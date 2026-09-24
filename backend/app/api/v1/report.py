@@ -1,30 +1,18 @@
 """API routes for scan report export operations."""
 
-from datetime import datetime, timezone
-import json
-import logging
 from enum import Enum
-from pathlib import Path
-from typing import Any
+import logging
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse, JSONResponse
+from sqlalchemy.orm import Session
 
-from jinja2 import Environment, FileSystemLoader
-
-from app.api.v1.scan import scan_jobs
-from app.core.errors import ScanNotFoundException
+from app.db.session import get_db
+from app.services.report import report_service
 
 logger = logging.getLogger("app.api.v1.report")
 
 router = APIRouter(prefix="/report", tags=["Report"])
-
-# Cấu hình Jinja2 template engine
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
-jinja_env = Environment(
-    loader=FileSystemLoader(str(TEMPLATES_DIR)),
-    autoescape=True,
-)
 
 
 class ExportFormat(str, Enum):
@@ -44,51 +32,28 @@ async def export_report(
         default=ExportFormat.JSON,
         description="Định dạng xuất báo cáo: 'json' hoặc 'html'",
     ),
+    db: Session = Depends(get_db),
 ) -> JSONResponse | HTMLResponse:
-    """Xuất báo cáo kết quả quét theo định dạng yêu cầu."""
-    if scan_id not in scan_jobs:
-        raise ScanNotFoundException(scan_id=scan_id)
-
-    job = scan_jobs[scan_id]
-    findings: list[dict[str, Any]] = job.get("findings") or []
-    scoring_data: dict[str, Any] = job.get("scoring") or {}
-
-    # Đếm số lượng findings theo mức độ nghiêm trọng
-    severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-    for finding in findings:
-        sev = finding.get("severity", "").lower()
-        if sev in severity_counts:
-            severity_counts[sev] += 1
-
-    report_data: dict[str, Any] = {
-        "scan_id": scan_id,
-        "target_url": job["target_url"],
-        "status": job["status"].value if hasattr(job["status"], "value") else str(job["status"]),
-        "created_at": str(job["created_at"]),
-        "completed_at": str(job["completed_at"]) if job.get("completed_at") else None,
-        "total_findings": len(findings),
-        "findings": findings,
-        "scoring": scoring_data if scoring_data else None,
-        "severity_counts": severity_counts,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-    }
+    """Xuất báo cáo kết quả quét theo định dạng yêu cầu qua ReportService."""
+    filename = report_service.get_export_filename(
+        scan_id=scan_id, format_ext=format.value
+    )
 
     # --- Xuất JSON ---
     if format == ExportFormat.JSON:
+        report_data = report_service.generate_json_report(scan_id=scan_id, db=db)
         return JSONResponse(
             content=report_data,
             headers={
-                "Content-Disposition": f'attachment; filename="webguard_report_{scan_id[:8]}.json"',
+                "Content-Disposition": f'attachment; filename="{filename}"',
             },
         )
 
-    # --- Xuất HTML ---
-    template = jinja_env.get_template("report.html")
-    html_content = template.render(**report_data)
-
+    # --- Xuất HTML qua Jinja2 template ---
+    html_content = report_service.generate_html_report(scan_id=scan_id, db=db)
     return HTMLResponse(
         content=html_content,
         headers={
-            "Content-Disposition": f'attachment; filename="webguard_report_{scan_id[:8]}.html"',
+            "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
