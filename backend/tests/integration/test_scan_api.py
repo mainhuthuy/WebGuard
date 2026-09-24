@@ -216,4 +216,22 @@ def test_cancel_scan_endpoint_not_found(client: TestClient) -> None:
     assert cancel_res.status_code == 404
 
 
+def test_cancel_scan_endpoint_already_completed(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Kiểm tra hủy phiên quét đã hoàn tất trả về HTTP 400 Bad Request."""
+    create_res = client.post("/api/v1/scan", json={"url": "https://example.com"})
+    scan_id = create_res.json()["scan_id"]
+
+    # Stream cho hoàn thành
+    client.get(f"/api/v1/scan/{scan_id}/stream")
+
+    # Thử hủy -> 400
+    cancel_res = client.post(f"/api/v1/scan/{scan_id}/cancel")
+    assert cancel_res.status_code == 400
+    assert "Không thể hủy" in cancel_res.json()["error"]["message"]
+
+
+
+
 

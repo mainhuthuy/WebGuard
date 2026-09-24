@@ -332,8 +332,17 @@ class ScanService:
 
         db.delete(scan)
         db.commit()
+
+        try:
+            from app.api.v1.scan import scan_jobs
+
+            scan_jobs.pop(scan_id, None)
+        except ImportError:
+            pass
+
         logger.info(f"ScanService: Đã xóa phiên quét {scan_id}")
         return True
+
 
     def list_scans(
         self,

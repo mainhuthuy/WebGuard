@@ -186,6 +186,15 @@ class HistoryService:
 
         db.delete(scan)
         db.commit()
+
+        # Dọn dẹp cache in-memory nếu có
+        try:
+            from app.api.v1.scan import scan_jobs
+
+            scan_jobs.pop(scan_id, None)
+        except ImportError:
+            pass
+
         logger.info(f"HistoryService: Đã xóa bản ghi quét {scan_id}")
         return True
 
@@ -206,10 +215,17 @@ class HistoryService:
         count = len(scans_to_delete)
         for scan in scans_to_delete:
             db.delete(scan)
+            try:
+                from app.api.v1.scan import scan_jobs
+
+                scan_jobs.pop(scan.id, None)
+            except ImportError:
+                pass
 
         db.commit()
         logger.info(f"HistoryService: Đã dọn dẹp {count} bản ghi lịch sử")
         return count
+
 
 
 # Singleton instance dùng chung
