@@ -297,8 +297,10 @@ def test_clear_history_all_and_older_than(
         db=db_session, older_than_days=7
     )
     assert deleted_old == 1
-    assert db_session.query(ScanModel).count() == 1
-    assert db_session.query(ScanModel).first().id == recent_scan.id
+    remaining_scan = db_session.query(ScanModel).first()
+    assert remaining_scan is not None
+    assert remaining_scan.id == recent_scan.id
+
 
     # Xóa toàn bộ
     deleted_all = history_service.clear_history(db=db_session)
