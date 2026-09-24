@@ -1,5 +1,11 @@
 """Schemas package export."""
 
+from app.schemas.history import (
+    HistoryDeleteResponse,
+    ScanHistoryItem,
+    ScanHistoryResponse,
+    ScanHistoryStats,
+)
 from app.schemas.scan import (
     Finding,
     ScanCreateRequest,
@@ -27,5 +33,10 @@ __all__ = [
     "ScoringResult",
     "ScanResponse",
     "ScanStreamEvent",
+    "ScanHistoryItem",
+    "ScanHistoryResponse",
+    "ScanHistoryStats",
+    "HistoryDeleteResponse",
 ]
+
 
