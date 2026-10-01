@@ -12,12 +12,13 @@ import type {
   ApiScanCreateResponse,
   ApiScanDetail,
   HistoryQuery,
+  ScanMode,
 } from '../types'
 
 export const scanApi = {
-  /** POST /scan — create a pending scan, returns its id */
-  async createScan(url: string): Promise<ApiScanCreateResponse> {
-    const { data } = await apiClient.post<ApiScanCreateResponse>('/scan', { url })
+  /** POST /scan — create a pending scan (quick | full), returns its id */
+  async createScan(url: string, mode: ScanMode = 'full'): Promise<ApiScanCreateResponse> {
+    const { data } = await apiClient.post<ApiScanCreateResponse>('/scan', { url, mode })
     return data
   },
 

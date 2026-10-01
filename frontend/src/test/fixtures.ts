@@ -34,6 +34,7 @@ export function makeApiScanDetail(overrides: Partial<ApiScanDetail> = {}): ApiSc
   return {
     scan_id: 'abc12345-0000-0000-0000-000000000000',
     target_url: 'https://example.com',
+    mode: 'full',
     status: 'completed',
     created_at: '2026-10-01T03:05:08.191297',
     completed_at: '2026-10-01T03:05:10.625503',

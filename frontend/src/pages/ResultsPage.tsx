@@ -20,12 +20,15 @@ interface ResultsPageProps {
   result: ScanResult
   onBack?: () => void
   onRescan?: () => void
+  /** Label of the back button. @default 'New Scan' */
+  backLabel?: string
 }
 
 export default function ResultsPage({
   result,
   onBack,
   onRescan,
+  backLabel = 'New Scan',
 }: ResultsPageProps) {
   const [activeFilter, setActiveFilter] = useState<Severity | 'all'>('all')
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null)
@@ -67,7 +70,7 @@ export default function ResultsPage({
       <div className="results-page__topbar">
         <button className="results-page__back" onClick={onBack}>
           <ArrowLeft size={16} />
-          New Scan
+          {backLabel}
         </button>
         <div className="results-page__actions">
           <Button

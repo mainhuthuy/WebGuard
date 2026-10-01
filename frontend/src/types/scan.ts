@@ -72,13 +72,14 @@ export interface ScanResult {
   duration_ms?: number
 }
 
-/** Scan history list item (lightweight) */
+/** Scan history list item (lightweight). Failed/cancelled scans have no grade or score. */
 export interface ScanHistoryItem {
   scan_id: string
   url: string
   mode: ScanMode
-  grade: Grade
-  score: number
+  status: ScanStatus
+  grade: Grade | null
+  score: number | null
   findings_count: number
   started_at: string
   duration_ms?: number

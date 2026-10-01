@@ -234,3 +234,9 @@
     display: none;
   }
 }
+
+/* Failure state */
+.scan-progress__done--error .scan-progress__done-icon {
+  color: var(--severity-critical);
+  filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.5));
+}

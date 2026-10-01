@@ -3,7 +3,15 @@
    Used by useScan while the backend API is not wired in (task 3.11).
    ============================================================ */
 
-import type { ScanMode, ScanResult, ModuleName, Finding, Grade, Severity } from '../types'
+import type {
+  ScanMode,
+  ScanResult,
+  ModuleName,
+  Finding,
+  Grade,
+  Severity,
+  ScanHistoryItem,
+} from '../types'
 import type { ModuleStep } from '../hooks/useScan'
 
 /* ── Mock findings pool (for demo mode) ───────────────────── */
@@ -236,6 +244,38 @@ export function buildMockScanResult(
     summary,
     started_at: startedAt,
     completed_at: completedAt,
+    duration_ms: durationMs,
+  }
+}
+
+/** Build a stand-in ScanResult for a mock history row (mock mode has no stored findings) */
+export function buildMockResultFromHistory(item: ScanHistoryItem): ScanResult {
+  const ids: ModuleName[] =
+    item.mode === 'quick'
+      ? ['headers', 'ssl_tls']
+      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors']
+
+  // Spread the recorded findings count over the modules, bounded by each pool's size
+  let remaining = item.findings_count
+  const steps: ModuleStep[] = ids.map((id) => {
+    const count = Math.min(remaining, MOCK_FINDINGS_POOL[id].length)
+    remaining -= count
+    return { id, label: id, status: 'completed', findingsCount: count }
+  })
+
+  const result = buildMockScanResult(
+    item.scan_id,
+    item.url,
+    item.mode,
+    steps,
+    item.grade ?? 'F',
+    item.score ?? 0,
+    item.started_at,
+  )
+  const durationMs = item.duration_ms ?? 0
+  return {
+    ...result,
+    completed_at: new Date(new Date(item.started_at).getTime() + durationMs).toISOString(),
     duration_ms: durationMs,
   }
 }

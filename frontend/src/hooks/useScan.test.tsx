@@ -85,17 +85,20 @@ describe('useScan — backend mode', () => {
 
   it('creates the scan, then streams from its URL', async () => {
     const { hook, es } = await startAndConnect()
-    expect(createScan).toHaveBeenCalledWith('https://example.com')
+    expect(createScan).toHaveBeenCalledWith('https://example.com', 'full')
     expect(es.url).toBe('/api/v1/scan/scan-1/stream')
     expect(hook.result.current.phase).toBe('scanning')
     expect(hook.result.current.scanning).toBe(true)
   })
 
-  it('always shows all modules in backend mode, even for quick scans', async () => {
+  it('sends the chosen mode to the backend and shows only its modules', async () => {
     createScan.mockResolvedValue({ scan_id: 'scan-1' })
     const { result } = renderHook(() => useScan({ useMock: false }))
     act(() => result.current.startScan('https://example.com', 'quick'))
-    expect(result.current.modules).toHaveLength(5)
+
+    expect(createScan).toHaveBeenCalledWith('https://example.com', 'quick')
+    expect(result.current.modules.map((m) => m.id)).toEqual(['headers', 'ssl_tls'])
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
   })
 
   it('updates module state and progress from stream events', async () => {
@@ -140,6 +143,15 @@ describe('useScan — backend mode', () => {
     expect(hook.result.current.phase).toBe('errored')
     expect(hook.result.current.errored).toBe(true)
     expect(hook.result.current.errorMessage).toBe('Scan blew up')
+  })
+
+  it('marks the module that was running as failed when the scan errors', async () => {
+    const { hook, es } = await startAndConnect()
+    act(() => es.emit('module_start', { module: 'headers', progress: 10 }))
+    act(() => es.emit('error', { message: 'boom' }))
+    const status = (id: string) => hook.result.current.modules.find((m) => m.id === id)?.status
+    expect(status('headers')).toBe('error')
+    expect(status('cookies')).toBe('pending')
   })
 
   it('goes to errored when the connection drops mid-scan', async () => {

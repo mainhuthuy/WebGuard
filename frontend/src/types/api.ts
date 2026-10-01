@@ -2,7 +2,7 @@
    Backend DTOs — mirrors backend/app/schemas/*.py (snake_case, raw)
    ============================================================ */
 
-import type { ScanStatus } from './scan'
+import type { ScanMode, ScanStatus } from './scan'
 
 export interface ApiFinding {
   module: string
@@ -22,6 +22,7 @@ export interface ApiScoring {
 export interface ApiScanCreateResponse {
   scan_id: string
   target_url: string
+  mode: ScanMode
   status: ScanStatus
   created_at: string
 }
@@ -29,6 +30,7 @@ export interface ApiScanCreateResponse {
 export interface ApiScanDetail {
   scan_id: string
   target_url: string
+  mode: ScanMode
   status: ScanStatus
   created_at: string
   completed_at: string | null
@@ -46,6 +48,7 @@ export interface ApiScanCancelResponse {
 export interface ApiHistoryItem {
   id: string
   target_url: string
+  mode: ScanMode
   status: ScanStatus
   score: number | null
   grade: string | null

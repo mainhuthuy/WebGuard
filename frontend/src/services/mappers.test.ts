@@ -6,6 +6,7 @@ import {
   mapFinding,
   mapScanDetail,
   mapHistoryItem,
+  extractSnippet,
   summarize,
 } from './mappers'
 import { makeApiScanDetail, makeFinding } from '../test/fixtures'
@@ -71,6 +72,7 @@ describe('mapFinding', () => {
       title: 'cors_wildcard',
       description: 'd',
       remediation: 'r',
+      snippet: undefined,
       evidence: 'https://example.com',
     })
   })
@@ -81,6 +83,39 @@ describe('mapFinding', () => {
       0,
     )
     expect(f.evidence).toBeUndefined()
+  })
+})
+
+describe('extractSnippet', () => {
+  it('extracts the header line from a header remediation', () => {
+    expect(extractSnippet('Thêm header: X-Frame-Options: DENY')).toBe('X-Frame-Options: DENY')
+    expect(
+      extractSnippet("Thêm header: Content-Security-Policy: default-src 'self'; script-src 'self';"),
+    ).toBe("Content-Security-Policy: default-src 'self'; script-src 'self';")
+  })
+
+  it('extracts the flag from a cookie remediation', () => {
+    expect(extractSnippet('Thêm cookie flag: SameSite=Lax hoặc Strict')).toBe(
+      'SameSite=Lax hoặc Strict',
+    )
+  })
+
+  it('returns undefined when the remediation carries no snippet', () => {
+    expect(extractSnippet('Gia hạn chứng chỉ SSL ngay lập tức')).toBeUndefined()
+  })
+
+  it('is applied by mapFinding', () => {
+    const f = mapFinding(
+      {
+        module: 'headers',
+        name: 'x-frame-options',
+        severity: 'medium',
+        description: '',
+        remediation: 'Thêm header: X-Frame-Options: DENY',
+      },
+      0,
+    )
+    expect(f.snippet).toBe('X-Frame-Options: DENY')
   })
 })
 
@@ -108,6 +143,10 @@ describe('mapScanDetail', () => {
     expect(result.findings[0].module).toBe('cors')
   })
 
+  it('keeps the scan mode reported by the backend', () => {
+    expect(mapScanDetail(makeApiScanDetail({ mode: 'quick' })).mode).toBe('quick')
+  })
+
   it('handles a scan without scoring or completion time', () => {
     const result = mapScanDetail(
       makeApiScanDetail({ scoring: null, completed_at: null, status: 'running', findings: [] }),
@@ -124,6 +163,7 @@ describe('mapHistoryItem', () => {
     const item = mapHistoryItem({
       id: 'id-1',
       target_url: 'https://example.com',
+      mode: 'quick',
       status: 'completed',
       score: 46,
       grade: 'F',
@@ -135,6 +175,8 @@ describe('mapHistoryItem', () => {
     expect(item).toMatchObject({
       scan_id: 'id-1',
       url: 'https://example.com',
+      mode: 'quick',
+      status: 'completed',
       score: 46,
       grade: 'F',
       findings_count: 10,
@@ -143,10 +185,11 @@ describe('mapHistoryItem', () => {
     })
   })
 
-  it('defaults a missing score to 0', () => {
+  it('keeps null grade and score for scans that never completed', () => {
     const item = mapHistoryItem({
       id: 'id-2',
       target_url: 'https://example.com',
+      mode: 'full',
       status: 'failed',
       score: null,
       grade: null,
@@ -155,8 +198,9 @@ describe('mapHistoryItem', () => {
       completed_at: null,
       duration_seconds: null,
     })
-    expect(item.score).toBe(0)
-    expect(item.grade).toBe('F')
+    expect(item.status).toBe('failed')
+    expect(item.score).toBeNull()
+    expect(item.grade).toBeNull()
     expect(item.duration_ms).toBeUndefined()
   })
 })

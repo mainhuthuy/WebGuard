@@ -129,7 +129,7 @@ export default function Sidebar({
         <div className="sidebar__footer">
           <div className="sidebar__footer-content">
             <Lock className="sidebar__footer-icon" />
-            <span className="sidebar__footer-text">Passive Audit Only</span>
+            <span className="sidebar__footer-text">Non-intrusive Audit</span>
           </div>
         </div>
       </aside>

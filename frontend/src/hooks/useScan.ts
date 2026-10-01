@@ -51,6 +51,11 @@ const MODULE_META: { id: ModuleName; label: string }[] = [
   { id: 'cors', label: 'CORS Configuration' },
 ]
 
+/** Mark every in-flight module as failed so the progress list reflects the error */
+function failActiveModules(steps: ModuleStep[]): ModuleStep[] {
+  return steps.map((m) => (m.status === 'active' ? { ...m, status: 'error' as const } : m))
+}
+
 /** Build initial module step list based on scan mode */
 export function buildModuleSteps(mode: ScanMode): ModuleStep[] {
   const activeIds: ModuleName[] =
@@ -224,6 +229,7 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
     // Scan errored
     if (event.event === 'error') {
       setErrorMessage(event.message)
+      setModules(failActiveModules)
       setPhase('errored')
     }
   }, [])
@@ -235,6 +241,7 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
     onError: () => {
       if (statusRef.current === 'error') {
         setErrorMessage('Lost connection to the scan stream.')
+        setModules(failActiveModules)
         setPhase('errored')
       }
     },
@@ -255,8 +262,7 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
       setErrorMessage(null)
       activeScanIdRef.current = null
 
-      // The backend always runs every module, so quick mode only applies to the mock
-      const initialModules = buildModuleSteps(useMock ? mode : 'full')
+      const initialModules = buildModuleSteps(mode)
       setModules(initialModules)
       latestModulesRef.current = initialModules
 
@@ -270,7 +276,7 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
 
       // Real mode: create the scan first, then open its SSE stream
       scanApi
-        .createScan(url)
+        .createScan(url, mode)
         .then((scan) => {
           if (runId !== runIdRef.current) return // cancelled / superseded meanwhile
           activeScanIdRef.current = scan.scan_id

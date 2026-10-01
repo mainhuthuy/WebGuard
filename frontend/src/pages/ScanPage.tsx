@@ -177,7 +177,7 @@ export default function ScanPage({ onStartScan, scanning = false }: ScanPageProp
         <div className="scan-features">
           <span className="scan-features__item">
             <CheckCircle2 className="scan-features__icon" style={{ color: 'var(--emerald)' }} />
-            Passive Auditing
+            Non-intrusive Auditing
           </span>
           <span className="scan-features__item">
             <Terminal className="scan-features__icon" style={{ color: 'var(--cyan)' }} />

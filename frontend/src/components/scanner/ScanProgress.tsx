@@ -40,16 +40,6 @@ interface LogEntry {
   message: string
 }
 
-/* ── Module metadata ─────────────────────────────────────── */
-
-const MODULE_META: { id: ModuleName; label: string }[] = [
-  { id: 'headers', label: 'Security Headers' },
-  { id: 'cookies', label: 'Cookie Flags' },
-  { id: 'ssl_tls', label: 'SSL / TLS Certificate' },
-  { id: 'information', label: 'Information Disclosure' },
-  { id: 'cors', label: 'CORS Configuration' },
-]
-
 /* ── Props ────────────────────────────────────────────────── */
 
 interface ScanProgressProps {
@@ -65,6 +55,10 @@ interface ScanProgressProps {
   completed: boolean
   /** Whether scan errored */
   errored?: boolean
+  /** Why the scan failed (shown when errored) */
+  errorMessage?: string | null
+  /** Called when user clicks "Try Again" after a failure */
+  onRetry?: () => void
   /** Called when user clicks "View Results" after completion */
   onViewResults?: () => void
   /** Called when user clicks "Cancel" */
@@ -78,6 +72,8 @@ export default function ScanProgress({
   logs,
   completed,
   errored = false,
+  errorMessage,
+  onRetry,
   onViewResults,
   onCancel,
 }: ScanProgressProps) {
@@ -200,6 +196,21 @@ export default function ScanProgress({
         </div>
       )}
 
+      {/* Failure details */}
+      {completed && errored && (
+        <div className="scan-progress__done scan-progress__done--error" role="alert">
+          <AlertCircle className="scan-progress__done-icon" />
+          <div className="scan-progress__done-text">
+            {errorMessage ?? 'The scan could not be completed'}
+          </div>
+          {onRetry && (
+            <button className="btn btn--secondary btn--md" onClick={onRetry} id="retry-scan-btn">
+              Try Again
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Cancel button while running */}
       {!completed && onCancel && (
         <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
@@ -213,22 +224,4 @@ export default function ScanProgress({
       )}
     </div>
   )
-}
-
-/* ── Helper: build initial modules state from mode ────────── */
-
-export function buildInitialModules(
-  mode: 'quick' | 'full'
-): ModuleStep[] {
-  const activeIds: ModuleName[] =
-    mode === 'quick'
-      ? ['headers', 'ssl_tls']
-      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors']
-
-  return MODULE_META.filter((m) => activeIds.includes(m.id)).map((m) => ({
-    id: m.id,
-    label: m.label,
-    status: 'pending' as ModuleStatus,
-    findingsCount: 0,
-  }))
 }

@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { Button, Badge, Card } from './common'
 import ScoreCard from './results/ScoreCard'
 import FindingDetail from './results/FindingDetail'
+import ScanProgress from './scanner/ScanProgress'
 import { makeFinding } from '../test/fixtures'
 
 describe('Button', () => {
@@ -116,5 +117,38 @@ describe('FindingDetail', () => {
 
     expect(writeText).toHaveBeenCalledWith('X-Frame-Options: DENY')
     expect(await screen.findByText('Copied')).toBeInTheDocument()
+  })
+})
+
+describe('ScanProgress — failure state', () => {
+  const baseProps = { url: 'https://example.com', progress: 40, modules: [], logs: [] }
+
+  it('shows the failure reason and a retry button', () => {
+    const onRetry = vi.fn()
+    render(
+      <ScanProgress
+        {...baseProps}
+        completed
+        errored
+        errorMessage="Lost connection to the scan stream."
+        onRetry={onRetry}
+      />,
+    )
+    expect(screen.getByText('Scan Failed')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Lost connection to the scan stream.')
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to a generic message and does not offer results', () => {
+    render(<ScanProgress {...baseProps} completed errored onViewResults={vi.fn()} />)
+    expect(screen.getByRole('alert')).toHaveTextContent('could not be completed')
+    expect(screen.queryByRole('button', { name: /view results/i })).not.toBeInTheDocument()
+  })
+
+  it('shows no failure UI for a successful scan', () => {
+    render(<ScanProgress {...baseProps} progress={100} completed onViewResults={vi.fn()} />)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /view results/i })).toBeInTheDocument()
   })
 })

@@ -1,2 +1,2 @@
-export { default as ScanProgress, buildInitialModules } from './ScanProgress'
+export { default as ScanProgress } from './ScanProgress'
 export type { ScanStreamEvent, ScanEventType } from './ScanProgress'

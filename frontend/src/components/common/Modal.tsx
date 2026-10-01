@@ -81,19 +81,17 @@ export default function Modal({
     >
       <div className={`modal modal--${size}`}>
         {/* Header */}
-        {(title || true) && (
-          <div className="modal__header">
-            <div className="modal__title">{title}</div>
-            <button
-              className="modal__close"
-              onClick={handleClose}
-              aria-label="Close modal"
-              title="Close"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        )}
+        <div className="modal__header">
+          <div className="modal__title">{title}</div>
+          <button
+            className="modal__close"
+            onClick={handleClose}
+            aria-label="Close modal"
+            title="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
         {/* Body */}
         <div className="modal__body">{children}</div>

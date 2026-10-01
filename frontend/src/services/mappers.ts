@@ -36,6 +36,16 @@ export function toModuleName(value: string | null | undefined): ModuleName {
   return MODULES.includes(lower as ModuleName) ? (lower as ModuleName) : 'information'
 }
 
+/**
+ * Backend remediation texts embed the fix after a marker, e.g.
+ * "Thêm header: X-Frame-Options: DENY" or "Thêm cookie flag: Secure".
+ * Extract it so the UI can show a copyable snippet.
+ */
+export function extractSnippet(remediation: string): string | undefined {
+  const match = remediation.match(/(?:Thêm header|Thêm cookie flag):\s*(.+)$/s)
+  return match ? match[1].trim() : undefined
+}
+
 export function mapFinding(f: ApiFinding, index: number): Finding {
   const module = toModuleName(f.module)
   return {
@@ -45,6 +55,7 @@ export function mapFinding(f: ApiFinding, index: number): Finding {
     title: f.name,
     description: f.description,
     remediation: f.remediation,
+    snippet: extractSnippet(f.remediation),
     evidence: f.url ?? undefined,
   }
 }
@@ -71,7 +82,7 @@ export function mapScanDetail(d: ApiScanDetail): ScanResult {
   return {
     scan_id: d.scan_id,
     url: d.target_url,
-    mode: 'full', // backend always runs every module
+    mode: d.mode,
     status: d.status,
     grade: toGrade(d.scoring?.grade),
     score: d.scoring?.score ?? 0,
@@ -87,9 +98,11 @@ export function mapHistoryItem(h: ApiHistoryItem): ScanHistoryItem {
   return {
     scan_id: h.id,
     url: h.target_url,
-    mode: 'full',
-    grade: toGrade(h.grade),
-    score: h.score ?? 0,
+    mode: h.mode,
+    status: h.status,
+    // Only completed scans have a meaningful grade/score
+    grade: h.grade ? toGrade(h.grade) : null,
+    score: h.score,
     findings_count: h.total_findings,
     started_at: toUtcIso(h.created_at),
     duration_ms: h.duration_seconds != null ? Math.round(h.duration_seconds * 1000) : undefined,
