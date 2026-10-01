@@ -1,5 +1,5 @@
 import httpx
-from app.modules.base import BaseModule
+from app.modules.base import HTTP_TIMEOUT, BaseModule
 
 class HeadersModule(BaseModule):
     @property
@@ -70,7 +70,7 @@ class HeadersModule(BaseModule):
     async def scan(self, url: str, **kwargs) -> list:
         findings = []
         # Bước 1: Gửi request
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             response = await client.get(url)
         # Bước 2: Lấy headers từ response
         headers = response.headers

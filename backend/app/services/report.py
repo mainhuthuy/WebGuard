@@ -60,6 +60,7 @@ class ReportService:
 
             job = scan_jobs[scan_id]
             target_url = job["target_url"]
+            mode_val = job.get("mode", "full")
             status_val = (
                 job["status"].value
                 if hasattr(job["status"], "value")
@@ -84,6 +85,7 @@ class ReportService:
             scoring = scoring_raw if scoring_raw else None
         else:
             target_url = scan.target_url
+            mode_val = scan.mode
             status_val = scan.status
             created_at = scan.created_at
             completed_at = scan.completed_at
@@ -128,6 +130,7 @@ class ReportService:
         return {
             "scan_id": scan_id,
             "target_url": target_url,
+            "mode": mode_val,
             "status": status_val,
             "created_at": str(created_at),
             "completed_at": str(completed_at) if completed_at else None,

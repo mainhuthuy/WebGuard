@@ -9,21 +9,24 @@ from app.modules.headers import HeadersModule
 from app.modules.information import InformationModule
 from app.modules.scoring import ScoringEngine
 from app.modules.ssl_tls import SSLTLSModule
-from app.schemas.scan import ScanEventType
+from app.schemas.scan import ScanEventType, ScanMode
 
 logger = logging.getLogger("app.modules.scanner")
 
 
 class Scanner:
-    def __init__(self) -> None:
-        # Khởi tạo tất cả modules
-        self.modules = [
-            HeadersModule(),
-            CookiesModule(),
-            SSLTLSModule(),
-            InformationModule(),
-            CorsModule(),
-        ]
+    def __init__(self, mode: str = "full") -> None:
+        # Quick: chỉ Headers + SSL/TLS. Full: tất cả modules.
+        if mode == ScanMode.QUICK.value:
+            self.modules = [HeadersModule(), SSLTLSModule()]
+        else:
+            self.modules = [
+                HeadersModule(),
+                CookiesModule(),
+                SSLTLSModule(),
+                InformationModule(),
+                CorsModule(),
+            ]
         self.scoring = ScoringEngine()
 
     async def scan(self, url: str) -> dict[str, Any]:

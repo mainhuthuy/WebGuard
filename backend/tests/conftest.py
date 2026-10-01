@@ -1,5 +1,36 @@
+import os
+import tempfile
+
+# Cô lập database: mọi test dùng file SQLite tạm, không đụng tới webguard.db của môi trường dev.
+# Phải đặt trước khi import `app` vì engine được tạo ngay khi import app.db.session.
+_TEST_DB_DIR = tempfile.mkdtemp(prefix="webguard_tests_")
+os.environ["WEBGUARD_DB_URL"] = f"sqlite:///{_TEST_DB_DIR}/test.db"
+
 import httpx
 import pytest
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _init_test_database():
+    """Tạo schema cho database test một lần trước toàn bộ session."""
+    from app.db.session import init_db
+
+    init_db()
+
+@pytest.fixture(autouse=True)
+def _fake_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kiểm tra SSRF mặc định thấy mọi hostname là IP public (không phụ thuộc mạng).
+
+    Chỉ giả lập bước phân giải của app.core.security, không đụng tới DNS của httpx.
+    Test cần DNS khác thì tự monkeypatch lại `app.core.security._resolve`.
+    """
+    from app.core import security
+
+    async def fake_resolve(hostname: str) -> list[str]:
+        return ["93.184.216.34"]
+
+    monkeypatch.setattr(security, "_resolve", fake_resolve)
+
 
 @pytest.fixture
 def mock_insecure_headers_response():

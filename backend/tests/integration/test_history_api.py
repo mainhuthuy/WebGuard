@@ -88,3 +88,15 @@ def test_clear_history_endpoint(client: TestClient) -> None:
     res = client.delete("/api/v1/history")
     assert res.status_code == 200
     assert res.json()["deleted"] is True
+
+
+def test_history_items_include_mode(client: TestClient) -> None:
+    """Danh sách lịch sử trả về mode của từng phiên quét."""
+    created = client.post(
+        "/api/v1/scan", json={"url": "https://history-mode.example.com", "mode": "quick"}
+    ).json()
+    items = client.get(
+        "/api/v1/history", params={"search_url": "history-mode.example.com"}
+    ).json()["items"]
+    match = next(i for i in items if i["id"] == created["scan_id"])
+    assert match["mode"] == "quick"

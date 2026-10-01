@@ -1,5 +1,5 @@
 import httpx
-from app.modules.base import BaseModule
+from app.modules.base import HTTP_TIMEOUT, BaseModule
 
 class InformationModule(BaseModule):
     @property
@@ -39,7 +39,7 @@ class InformationModule(BaseModule):
 
     async def scan(self, url: str, **kwargs) -> list:
         findings = []
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             # Duyệt qua từng path
             for item in self.SENSITIVE_PATHS:
                 target = url.rstrip("/") + item["path"]
@@ -55,7 +55,7 @@ class InformationModule(BaseModule):
                             "remediation" : item["remediation"],
                             "url" : target
                         })
-                except:
+                except httpx.HTTPError:
                     pass
             
             try:
@@ -81,6 +81,6 @@ class InformationModule(BaseModule):
                         "remediation": "Xóa header X-Powered-By",
                         "url": url
                     })
-            except:
+            except httpx.HTTPError:
                 pass
         return findings

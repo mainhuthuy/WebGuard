@@ -1,8 +1,18 @@
+import asyncio
 import ssl
 import socket
 import datetime
+from typing import Any
 from urllib.parse import urlparse
-from app.modules.base import BaseModule
+from app.modules.base import HTTP_TIMEOUT, BaseModule
+
+
+def _fetch_certificate(host: str, port: int) -> tuple[dict[str, Any], str | None]:
+    """Kết nối TLS (blocking) và trả về (cert, phiên bản TLS). Chạy trong thread riêng."""
+    context = ssl.create_default_context()
+    with socket.create_connection((host, port), timeout=HTTP_TIMEOUT) as sock:
+        with context.wrap_socket(sock, server_hostname=host) as ssock:
+            return ssock.getpeercert() or {}, ssock.version()
 
 class SSLTLSModule(BaseModule):
     @property
@@ -14,18 +24,14 @@ class SSLTLSModule(BaseModule):
         return "Kiểm tra cấu hình SSL/TLS của trang web"
 
     async def scan(self, url: str, **kwargs) -> list:
-        from urllib.parse import urlparse
         parsed = urlparse(url)
-        host = parsed.hostname
-        port = 443
+        host = parsed.hostname or ""
+        port = parsed.port or 443
         findings = []
         # Bước 1: Kết nối SSL và lấy thông tin chứng chỉ
         try:
-            context = ssl.create_default_context()
-            with socket.create_connection((host, port)) as sock:
-                with context.wrap_socket(sock, server_hostname=host) as ssock:
-                    cert = ssock.getpeercert()
-                    tls_version = ssock.version()
+            # socket đồng bộ -> chạy trong thread để không chặn event loop
+            cert, tls_version = await asyncio.to_thread(_fetch_certificate, host, port)
         except Exception as e:
             findings.append({
                 "module": self.name,

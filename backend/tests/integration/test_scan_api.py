@@ -235,3 +235,54 @@ def test_cancel_scan_endpoint_already_completed(
 
 
 
+
+
+def test_create_scan_defaults_to_full_mode(client: TestClient) -> None:
+    """Không truyền mode -> mặc định full."""
+    response = client.post("/api/v1/scan", json={"url": "https://example.com"})
+    assert response.status_code == 201
+    assert response.json()["mode"] == "full"
+
+
+def test_create_scan_quick_mode_is_persisted(client: TestClient) -> None:
+    """Mode quick được lưu và trả lại ở cả create và get detail."""
+    created = client.post(
+        "/api/v1/scan", json={"url": "https://example.com", "mode": "quick"}
+    )
+    assert created.status_code == 201
+    assert created.json()["mode"] == "quick"
+
+    detail = client.get(f"/api/v1/scan/{created.json()['scan_id']}")
+    assert detail.status_code == 200
+    assert detail.json()["mode"] == "quick"
+
+
+def test_create_scan_invalid_mode_returns_422(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/scan", json={"url": "https://example.com", "mode": "turbo"}
+    )
+    assert response.status_code == 422
+
+
+def test_create_scan_blocks_hostname_resolving_to_private_ip(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tên miền trỏ về IP nội bộ (vd cloud metadata) phải bị chặn với 400."""
+    from app.core import security
+
+    async def private_dns(hostname: str) -> list[str]:
+        return ["169.254.169.254"]
+
+    monkeypatch.setattr(security, "_resolve", private_dns)
+    response = client.post("/api/v1/scan", json={"url": "https://metadata.attacker.com"})
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_TARGET_URL"
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://169.254.169.254/latest", "http://[::1]/", "http://100.64.0.1/", "http://0.0.0.0/"],
+)
+def test_create_scan_blocks_non_global_ip_literals(client: TestClient, url: str) -> None:
+    response = client.post("/api/v1/scan", json={"url": url})
+    assert response.status_code == 422

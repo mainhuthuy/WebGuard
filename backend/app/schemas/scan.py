@@ -25,6 +25,13 @@ class ScanStatus(str, Enum):
 
 
 
+class ScanMode(str, Enum):
+    """Chế độ quét: quick (Headers + SSL/TLS) hoặc full (toàn bộ module)."""
+
+    QUICK = "quick"
+    FULL = "full"
+
+
 class ScanEventType(str, Enum):
     START = "start"
     MODULE_START = "module_start"
@@ -41,6 +48,10 @@ class ScanCreateRequest(BaseModel):
         ...,
         description="Target URL cần quét (phải có http:// hoặc https://)",
         examples=["https://example.com"],
+    )
+    mode: ScanMode = Field(
+        default=ScanMode.FULL,
+        description="Chế độ quét: 'quick' (Headers + SSL/TLS) hoặc 'full' (tất cả module)",
     )
 
     @field_validator("url")
@@ -70,7 +81,7 @@ class ScanCreateRequest(BaseModel):
             # Không phải dạng IP thuần (là tên miền chữ như example.com)
             is_ip = False
         # Nếu là IP thật mà lại là Private hoặc Loopback thì CHẶN NGAY
-        if is_ip and (ip.is_private or ip.is_loopback):
+        if is_ip and not ip.is_global:
             raise ValueError("Không được phép quét dải địa chỉ IP mạng nội bộ (Private IP)")
         return url_str
 
@@ -80,6 +91,7 @@ class ScanCreateResponse(BaseModel):
 
     scan_id: str = Field(..., description="Mã định danh duy nhất của lượt quét (UUID)")
     target_url: str = Field(..., description="URL mục tiêu đã được chuẩn hóa")
+    mode: ScanMode = Field(default=ScanMode.FULL, description="Chế độ quét đã chọn")
     status: ScanStatus = Field(default=ScanStatus.PENDING, description="Trạng thái hiện tại")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -117,6 +129,7 @@ class ScanDetailResponse(BaseModel):
 
     scan_id: str = Field(..., description="Mã định danh duy nhất của lượt quét")
     target_url: str = Field(..., description="URL mục tiêu đã quét")
+    mode: ScanMode = Field(default=ScanMode.FULL, description="Chế độ quét đã dùng")
     status: ScanStatus = Field(..., description="Trạng thái hiện tại của phiên quét")
     created_at: datetime = Field(..., description="Thời điểm khởi tạo (UTC)")
     completed_at: datetime | None = Field(

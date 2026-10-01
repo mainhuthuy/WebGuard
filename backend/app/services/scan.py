@@ -40,7 +40,7 @@ class ScanService:
         # Lưu các asyncio.Task đang chạy ngầm trong memory để quản lý và hủy khi cần
         self._active_tasks: dict[str, asyncio.Task[Any]] = {}
 
-    def create_scan(self, db: Session, target_url: str) -> ScanModel:
+    def create_scan(self, db: Session, target_url: str, mode: str = "full") -> ScanModel:
         """Khởi tạo một bản ghi quét mới với trạng thái pending và lưu vào database."""
         scan_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
@@ -48,6 +48,7 @@ class ScanService:
         scan_record = ScanModel(
             id=scan_id,
             target_url=target_url,
+            mode=mode,
             status=ScanStatus.PENDING.value,
             created_at=now,
         )
@@ -101,7 +102,7 @@ class ScanService:
             logger.info(f"ScanService: Bắt đầu thực thi quét {scan_id} ({scan.target_url})")
 
             # Gọi Scanner Orchestrator chạy song song 5 module
-            scanner = Scanner()
+            scanner = Scanner(mode=scan.mode)
             scan_result = await scanner.scan(url=scan.target_url)
 
             # Kiểm tra xem trong lúc quét có bị hủy hay không
@@ -320,7 +321,7 @@ class ScanService:
         if current_task:
             self._active_tasks[scan_id] = current_task
 
-        scanner = Scanner()
+        scanner = Scanner(mode=scan.mode)
         try:
             async for step_event in scanner.scan_stream(url=scan.target_url, scan_id=scan_id):
                 # Khi nhận sự kiện hoàn thành từ scanner -> lưu findings và điểm vào DB

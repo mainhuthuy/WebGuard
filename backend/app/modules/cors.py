@@ -1,6 +1,6 @@
 import httpx
 
-from app.modules.base import BaseModule
+from app.modules.base import HTTP_TIMEOUT, BaseModule
 
 class CorsModule(BaseModule):
     @property
@@ -13,7 +13,7 @@ class CorsModule(BaseModule):
     
     async def scan(self, url: str, **kwargs) -> list:
         findings = []
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             # Check 1: Wildcard
             response = await client.get(url)
             acao = response.headers.get("access-control-allow-origin")

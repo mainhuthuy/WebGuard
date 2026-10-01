@@ -96,6 +96,7 @@ class HistoryService:
                     id=scan.id,
                     target_url=scan.target_url,
                     status=status_enum,
+                    mode=scan.mode if scan.mode in ("quick", "full") else "full",
                     score=scan.score,
                     grade=scan.grade,
                     total_findings=len(scan.findings),

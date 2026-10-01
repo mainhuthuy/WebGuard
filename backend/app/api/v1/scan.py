@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 
 from app.core.errors import ScanNotFoundException
+from app.core.security import assert_public_target
 from app.db.session import get_db
 from app.schemas.scan import (
     Finding,
@@ -19,6 +20,7 @@ from app.schemas.scan import (
     ScanCreateResponse,
     ScanDetailResponse,
     ScanEventType,
+    ScanMode,
     ScanStatus,
     ScoringResult,
 )
@@ -44,12 +46,14 @@ async def create_scan(
     db: Session = Depends(get_db),
 ) -> ScanCreateResponse:
     """Tạo lượt quét mới qua ScanService và lưu vào Database."""
-    scan = scan_service.create_scan(db=db, target_url=payload.url)
+    await assert_public_target(payload.url)
+    scan = scan_service.create_scan(db=db, target_url=payload.url, mode=payload.mode.value)
 
     # Đồng bộ cache scan_jobs để tương thích ngược
     scan_jobs[scan.id] = {
         "scan_id": scan.id,
         "target_url": scan.target_url,
+        "mode": scan.mode,
         "status": ScanStatus(scan.status),
         "created_at": scan.created_at,
         "findings": [],
@@ -60,6 +64,7 @@ async def create_scan(
     return ScanCreateResponse(
         scan_id=scan.id,
         target_url=scan.target_url,
+        mode=ScanMode(scan.mode),
         status=ScanStatus(scan.status),
         created_at=scan.created_at,
     )
@@ -165,6 +170,7 @@ async def get_scan_result(
         return ScanDetailResponse(
             scan_id=scan.id,
             target_url=scan.target_url,
+            mode=ScanMode(scan.mode),
             status=ScanStatus(scan.status),
             created_at=scan.created_at,
             completed_at=scan.completed_at,
@@ -192,6 +198,7 @@ async def get_scan_result(
     return ScanDetailResponse(
         scan_id=scan_id,
         target_url=job["target_url"],
+        mode=ScanMode(job.get("mode", "full")),
         status=job["status"],
         created_at=job["created_at"],
         completed_at=job.get("completed_at"),

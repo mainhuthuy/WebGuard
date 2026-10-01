@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.schemas.scan import ScanStatus
+from app.schemas.scan import ScanMode, ScanStatus
 
 
 class ScanHistoryItem(BaseModel):
@@ -14,6 +14,7 @@ class ScanHistoryItem(BaseModel):
     id: str = Field(..., description="Mã định danh duy nhất của lượt quét (UUID)")
     target_url: str = Field(..., description="URL mục tiêu đã quét")
     status: ScanStatus = Field(..., description="Trạng thái hiện tại")
+    mode: ScanMode = Field(default=ScanMode.FULL, description="Chế độ quét đã dùng")
     score: int | None = Field(default=None, description="Điểm an ninh tổng thể (0-100)")
     grade: str | None = Field(default=None, description="Xếp loại an ninh (A+ đến F)")
     total_findings: int = Field(default=0, description="Tổng số lỗ hổng phát hiện được")

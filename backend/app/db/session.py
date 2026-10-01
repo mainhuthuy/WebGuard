@@ -3,7 +3,7 @@
 from collections.abc import Generator
 import logging
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core import get_settings
@@ -47,9 +47,28 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def _upgrade_legacy_schema() -> None:
+    """Bổ sung các cột mới cho database cũ được tạo bằng create_all (không qua Alembic).
+
+    create_all không sửa bảng đã tồn tại, nên các cột thêm sau này phải được thêm thủ công.
+    Môi trường dùng Alembic (`alembic upgrade head`) đã có sẵn các cột này.
+    """
+    inspector = inspect(engine)
+    if "scans" not in inspector.get_table_names():
+        return
+    scan_columns = {col["name"] for col in inspector.get_columns("scans")}
+    if "mode" not in scan_columns:
+        logger.info("Nâng cấp schema: thêm cột scans.mode")
+        with engine.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE scans ADD COLUMN mode VARCHAR(16) NOT NULL DEFAULT 'full'")
+            )
+
+
 def init_db() -> None:
-    """Khởi tạo toàn bộ database tables nếu chưa tồn tại."""
+    """Khởi tạo toàn bộ database tables nếu chưa tồn tại và nâng cấp schema cũ."""
     import app.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    _upgrade_legacy_schema()
 

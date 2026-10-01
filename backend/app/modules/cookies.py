@@ -1,5 +1,5 @@
 import httpx 
-from app.modules.base import BaseModule
+from app.modules.base import HTTP_TIMEOUT, BaseModule
 
 class CookiesModule(BaseModule):
     @property
@@ -34,7 +34,7 @@ class CookiesModule(BaseModule):
     async def scan(self, url: str, **kwargs) -> list:
         findings = []
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             response = await client.get(url)
 
         # Lấy TẤT CẢ raw cookies (dạng string)

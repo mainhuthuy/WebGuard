@@ -20,6 +20,9 @@ class ScanModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True)
     target_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(
+        String(16), default="full", server_default="full", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
