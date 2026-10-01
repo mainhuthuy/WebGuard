@@ -3,6 +3,7 @@ import { Header, Sidebar, Footer } from './components/layout'
 import ScanPage from './pages/ScanPage'
 import ResultsPage from './pages/ResultsPage'
 import HistoryPage from './pages/HistoryPage'
+import AboutPage from './pages/AboutPage'
 import { Button } from './components/common'
 import { ScanProgress } from './components/scanner'
 import { useScan } from './hooks'
@@ -123,11 +124,7 @@ export default function App() {
               </div>
             </div>
           )}
-          {view === 'about' && (
-            <div className="page flex-center" style={{ minHeight: '50vh' }}>
-              <p className="text-secondary">About & Disclaimer — coming in task 3.12</p>
-            </div>
-          )}
+          {view === 'about' && <AboutPage onStartScan={() => handleNavigate('scan', '/')} />}
         </main>
 
         <Footer hasSidebar sidebarCollapsed={sidebarCollapsed} />
