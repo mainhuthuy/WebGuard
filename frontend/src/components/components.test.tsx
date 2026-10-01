@@ -4,6 +4,7 @@ import { Button, Badge, Card } from './common'
 import ScoreCard from './results/ScoreCard'
 import FindingDetail from './results/FindingDetail'
 import ScanProgress from './scanner/ScanProgress'
+import SeverityChart from './results/SeverityChart'
 import { makeFinding } from '../test/fixtures'
 
 describe('Button', () => {
@@ -150,5 +151,32 @@ describe('ScanProgress — failure state', () => {
     render(<ScanProgress {...baseProps} progress={100} completed onViewResults={vi.fn()} />)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /view results/i })).toBeInTheDocument()
+  })
+})
+
+describe('SeverityChart', () => {
+  const summary = { critical: 1, high: 2, medium: 3, low: 4, info: 0, total: 10 }
+
+  it('fills the whole severity bar even when the summary also carries a total', () => {
+    const { container } = render(<SeverityChart summary={summary} showChart={false} />)
+    const widths = Array.from(container.querySelectorAll<HTMLElement>('.severity-bar__segment')).map(
+      (el) => parseFloat(el.style.width),
+    )
+    expect(widths).toHaveLength(4) // the zero-count "info" segment is skipped
+    expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(100)
+    expect(widths[0]).toBeCloseTo(10) // critical: 1 of 10
+  })
+
+  it('lists a count for every severity in the legend', () => {
+    render(<SeverityChart summary={summary} showChart={false} />)
+    expect(screen.getByText('Critical').nextElementSibling).toHaveTextContent('1')
+    expect(screen.getByText('Low').nextElementSibling).toHaveTextContent('4')
+    expect(screen.getByText('Informational').nextElementSibling).toHaveTextContent('0')
+  })
+
+  it('draws no bar when there are no findings', () => {
+    const empty = { critical: 0, high: 0, medium: 0, low: 0, info: 0, total: 0 }
+    const { container } = render(<SeverityChart summary={empty} showChart={false} />)
+    expect(container.querySelector('.severity-bar')).toBeNull()
   })
 })

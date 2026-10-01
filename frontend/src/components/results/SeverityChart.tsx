@@ -49,7 +49,9 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
 }
 
 export default function SeverityChart({ summary, showChart = true }: SeverityChartProps) {
-  const total = Object.values(summary).reduce((a, b) => a + b, 0)
+  // Sum only the known severities: callers pass ScanResult.summary, which also has a `total`
+  // field that must not be counted again.
+  const total = SEVERITY_ORDER.reduce((sum, s) => sum + summary[s], 0)
 
   // Prepare chart data (only non-zero slices)
   const chartData = SEVERITY_ORDER
