@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { Button, Badge, Card } from './common'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { Button, Badge, Card, Modal } from './common'
 import ScoreCard from './results/ScoreCard'
 import FindingDetail from './results/FindingDetail'
 import ScanProgress from './scanner/ScanProgress'
@@ -178,5 +178,43 @@ describe('SeverityChart', () => {
     const empty = { critical: 0, high: 0, medium: 0, low: 0, info: 0, total: 0 }
     const { container } = render(<SeverityChart summary={empty} showChart={false} />)
     expect(container.querySelector('.severity-bar')).toBeNull()
+  })
+})
+
+describe('Modal', () => {
+  it('renders into <body>, so a transformed ancestor cannot shift its fixed overlay', () => {
+    render(
+      <div style={{ transform: 'translateY(0)' }} data-testid="transformed-page">
+        <Modal open onClose={vi.fn()} title="Details">
+          Body text
+        </Modal>
+      </div>,
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.parentElement).toBe(document.body)
+    expect(screen.getByTestId('transformed-page')).not.toContainElement(dialog)
+    expect(screen.getByText('Body text')).toBeInTheDocument()
+  })
+
+  it('renders nothing while closed', () => {
+    render(
+      <Modal open={false} onClose={vi.fn()}>
+        Hidden
+      </Modal>,
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('calls onClose when the overlay (but not the panel) is clicked', async () => {
+    const onClose = vi.fn()
+    render(
+      <Modal open onClose={onClose} title="T">
+        Inside
+      </Modal>,
+    )
+    fireEvent.click(screen.getByText('Inside'))
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('dialog'))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 })

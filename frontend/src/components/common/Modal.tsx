@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import './Modal.css'
 
@@ -72,7 +73,10 @@ export default function Modal({
     }
   }
 
-  return (
+  // Render into <body> through a portal. A `position: fixed` overlay is positioned relative to the
+  // nearest ancestor with a `transform` (e.g. a page that ran a fade-in-up animation), which made
+  // the modal centre on the whole page instead of the viewport.
+  return createPortal(
     <div
       className={`modal-overlay ${closing ? 'modal-overlay--closing' : ''}`}
       onClick={handleOverlayClick}
@@ -99,6 +103,7 @@ export default function Modal({
         {/* Footer */}
         {footer && <div className="modal__footer">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
