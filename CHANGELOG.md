@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/API_REFERENCE.md` corrected to match the implemented endpoints and payloads
 
 ### Fixed
+- Scanner accuracy: cookie flags are matched by attribute name (a cookie named `session_secure` no
+  longer counts as having `Secure`); CORS credentials are critical only when an arbitrary origin is
+  reflected (a fixed origin with credentials is a valid config); servers that still accept
+  TLS 1.0/1.1 are now detected by probing each legacy version (including legacy-only servers that
+  previously showed up as a plain connection failure); `/wp-admin` redirects to the WordPress login
+  are detected
 - Severity distribution bar on the results page filled only 50% of its width (the summary `total`
   was counted twice)
 - Learning notes (`docs/learning`) reviewed against the code: corrected the SSRF validator example,

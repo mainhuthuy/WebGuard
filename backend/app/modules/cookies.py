@@ -46,14 +46,18 @@ class CookiesModule(BaseModule):
 
         # Duyệt qua TỪNG cookie
         for cookie_str in raw_cookies:
-            # Lấy tên cookie (phần trước dấu =)
-            cookie_name = cookie_str.split("=")[0].strip()
+            # Tách "tên=giá trị; Attr1; Attr2=giá trị" thành các phần theo dấu ;
+            parts = [p.strip() for p in cookie_str.split(";")]
+            # Tên cookie = phần trước dấu = của phần đầu tiên
+            cookie_name = parts[0].split("=")[0].strip()
+            # Chỉ so khớp TÊN THUỘC TÍNH (bỏ phần đầu là tên=giá trị): tránh nhầm với
+            # cookie có tên/giá trị chứa chữ "secure", "samesite"...
+            attributes = {p.split("=")[0].strip().lower() for p in parts[1:]}
 
             # Duyệt qua TỪNG flag cần check
             for flag in self.COOKIE_FLAGS:
-                # Kiểm tra flag["name"].lower() có trong cookie_str.lower() không
-                # Nếu KHÔNG có → append finding
-                if flag["name"].lower() not in cookie_str.lower():
+                # Nếu thuộc tính KHÔNG có → append finding
+                if flag["name"].lower() not in attributes:
                     findings.append({
                         "module": self.name,
                         "name" : cookie_name,

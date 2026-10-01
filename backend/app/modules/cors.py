@@ -2,6 +2,10 @@ import httpx
 
 from app.modules.base import HTTP_TIMEOUT, BaseModule
 
+# Origin giả mạo dùng để dò xem server có "tin" mọi origin không
+EVIL_ORIGIN = "https://evil.com"
+
+
 class CorsModule(BaseModule):
     @property
     def name(self) -> str:
@@ -28,9 +32,10 @@ class CorsModule(BaseModule):
                     "url": url
                 })
             # Check 2: Origin reflection
-            response = await client.get(url, headers={"Origin": "https://evil.com"})
+            response = await client.get(url, headers={"Origin": EVIL_ORIGIN})
             acao = response.headers.get("access-control-allow-origin")
-            if acao == "https://evil.com":
+            reflected = acao == EVIL_ORIGIN
+            if reflected:
                 # Finding: server phản hồi origin tùy tiện
                 findings.append({
                     "module": self.name,
@@ -40,9 +45,10 @@ class CorsModule(BaseModule):
                     "remediation": "Kiểm tra Origin trong whitelist trước khi phản hồi, không phản hồi origin tùy tiện",
                     "url": url
                 })
-            # Check 3: Credentials
+            # Check 3: Credentials — chỉ nguy hiểm khi origin lạ được PHẢN XẠ lại.
+            # (Allow-Origin cố định + Allow-Credentials: true là cấu hình hợp lệ.)
             acac = response.headers.get("access-control-allow-credentials")
-            if acac and acac.lower() == "true" and acao and acao != "*":
+            if reflected and acac and acac.lower() == "true":
                 # CRITICAL! Server cho phép gửi cookie từ origin bất kỳ
                 findings.append({
                     "module": self.name,

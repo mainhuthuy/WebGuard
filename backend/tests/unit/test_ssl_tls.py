@@ -9,6 +9,12 @@ from app.modules import ssl_tls
 from app.modules.ssl_tls import SSLTLSModule
 
 
+@pytest.fixture(autouse=True)
+def _no_real_legacy_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mặc định không dò TLS cũ qua mạng thật; test cần thì tự thay `_probe_legacy_tls`."""
+    monkeypatch.setattr(ssl_tls, "_probe_legacy_tls", lambda host, port: [])
+
+
 def _cert_expiring_in(days: int) -> dict[str, Any]:
     expire = datetime.now(timezone.utc) + timedelta(days=days)
     return {"notAfter": expire.strftime("%b %d %H:%M:%S %Y GMT")}

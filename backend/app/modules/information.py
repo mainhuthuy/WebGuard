@@ -1,6 +1,9 @@
 import httpx
 from app.modules.base import HTTP_TIMEOUT, BaseModule
 
+REDIRECT_STATUSES = (301, 302, 303, 307, 308)
+
+
 class InformationModule(BaseModule):
     @property
     def name(self) -> str:
@@ -31,6 +34,8 @@ class InformationModule(BaseModule):
         },
         {
             "path" : "/wp-admin",
+            # /wp-admin thường trả 301/302 chuyển tới wp-login.php thay vì 200
+            "redirect_markers" : ("wp-login.php", "/wp-admin/"),
             "severity" : "medium",
             "description" : "Cổng quản trị website",
             "remediation" : "Tăng cường bảo mật cho cổng quản trị"
@@ -45,7 +50,15 @@ class InformationModule(BaseModule):
                 target = url.rstrip("/") + item["path"]
                 try:
                     response = await client.get(target)
-                    if response.status_code == 200:
+                    exposed = response.status_code == 200
+                    if not exposed and "redirect_markers" in item:
+                        # Không theo redirect (tránh SSRF) nên tự đọc header Location
+                        location = response.headers.get("location", "").lower()
+                        exposed = (
+                            response.status_code in REDIRECT_STATUSES
+                            and any(m in location for m in item["redirect_markers"])
+                        )
+                    if exposed:
                         # File tồn tại → Finding!
                         findings.append({
                             "module" : self.name,
