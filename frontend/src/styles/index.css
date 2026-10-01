@@ -1,49 +1,69 @@
+/* ============================================================
+   WebGuard — Main Stylesheet Entry Point
+   Import order matters: reset → tokens → typography → animations → utilities
+   ============================================================ */
+
+/* 1. Reset — normalize browser defaults */
 @import './reset.css';
+
+/* 2. Design Tokens — CSS custom properties (single source of truth) */
+@import './tokens.css';
+
+/* 3. Typography — heading hierarchy, text styles, code blocks */
+@import './typography.css';
+
+/* 4. Animations — keyframes and animation utility classes */
 @import './animations.css';
 
-:root {
-  /* Cybersecurity Dark Vibe Palette */
-  --bg-primary: #0a0d14;
-  --bg-secondary: #121826;
-  --bg-card: rgba(18, 24, 38, 0.7);
-  --bg-card-hover: rgba(28, 36, 56, 0.8);
-  --border-color: rgba(99, 102, 241, 0.15);
-  --border-glow: rgba(99, 102, 241, 0.4);
+/* 5. Utilities — layout helpers, glassmorphism, cards, backgrounds */
+@import './utilities.css';
 
-  /* Primary & Accent Colors */
-  --primary: #6366f1;         /* Indigo */
-  --primary-hover: #4f46e5;
-  --accent-cyan: #06b6d4;      /* Cyber Cyan */
-  --accent-purple: #a855f7;    /* Cyber Purple */
-  --accent-emerald: #10b981;   /* Success / Safe */
-
-  /* Severity Colors */
-  --severity-critical: #ef4444;
-  --severity-high: #f97316;
-  --severity-medium: #eab308;
-  --severity-low: #3b82f6;
-  --severity-info: #64748b;
-
-  /* Typography Colors */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-
-  /* Fonts */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-}
+/* ── Global base styles ──────────────────────────────────── */
 
 body {
   font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* App shell layout — used when sidebar + header are present */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--duration-slow) var(--ease-default);
+}
+
+.app-main--collapsed {
+  margin-left: var(--sidebar-collapsed);
+}
+
+.app-content {
+  flex: 1;
+  padding: var(--space-8);
+  margin-top: var(--header-height);
+}
+
+/* Page transition wrapper */
+.page {
+  animation: fade-in-up var(--duration-slow) var(--ease-out) both;
 }
