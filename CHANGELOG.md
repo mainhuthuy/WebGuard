@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Failed scans now show the reason and a "Try Again" action
 
 ### Changed
+- About page now documents every check (25 across 5 modules) with its risk level, what is looked
+  for and why it matters, plus a guide to the four risk levels; a backend test keeps this catalogue
+  in sync with the scanner modules
 - IP-literal SSRF check uses `is_global` (also blocks CGNAT, link-local and reserved ranges)
 - Target requests use a 10s timeout; the TLS handshake runs in a worker thread instead of blocking
   the event loop and honours the port in the URL

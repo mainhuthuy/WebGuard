@@ -10,51 +10,24 @@ import {
   FileText,
   Scale,
   ShieldAlert,
+  AlertTriangle,
   Ban,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Button, Card } from '../components/common'
+import { Badge, Button, Card } from '../components/common'
+import { CHECK_MODULES, SEVERITY_GUIDE, TOTAL_CHECKS } from './aboutChecks'
+import type { ModuleName } from '../types'
 import './AboutPage.css'
 
 /* ── Content ─────────────────────────────────────────────── */
 
-interface Feature {
-  icon: ReactNode
-  title: string
-  description: string
+const MODULE_ICONS: Record<ModuleName, ReactNode> = {
+  headers: <FileLock2 size={20} />,
+  cookies: <Cookie size={20} />,
+  ssl_tls: <KeyRound size={20} />,
+  information: <Search size={20} />,
+  cors: <Globe2 size={20} />,
 }
-
-const FEATURES: Feature[] = [
-  {
-    icon: <FileLock2 size={20} />,
-    title: 'Security Headers',
-    description:
-      'Checks for CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy and cross-origin isolation headers.',
-  },
-  {
-    icon: <Cookie size={20} />,
-    title: 'Cookie Flags',
-    description: 'Verifies that cookies set by the target use Secure, HttpOnly and SameSite.',
-  },
-  {
-    icon: <KeyRound size={20} />,
-    title: 'SSL / TLS',
-    description:
-      'Inspects the certificate expiry date and flags outdated protocol versions (SSLv3, TLS 1.0 and 1.1).',
-  },
-  {
-    icon: <Search size={20} />,
-    title: 'Information Disclosure',
-    description:
-      'Looks for exposed files such as /.env and /.git/HEAD, and for Server / X-Powered-By banners that leak technology details.',
-  },
-  {
-    icon: <Globe2 size={20} />,
-    title: 'CORS Configuration',
-    description:
-      'Detects wildcard origins, reflected origins and credentialed cross-origin access.',
-  },
-]
 
 const STEPS: { title: string; description: string }[] = [
   {
@@ -122,17 +95,69 @@ export default function AboutPage({ onStartScan }: AboutPageProps) {
         </p>
       </div>
 
-      {/* Features */}
+      {/* Risk levels */}
+      <section className="about-section" aria-labelledby="about-risk">
+        <h2 className="about-section__title" id="about-risk">
+          <AlertTriangle size={18} /> How risk levels work
+        </h2>
+        <p className="about-section__text">
+          Every check has a fixed risk level. A finding means a check <strong>failed on the target</strong>; it
+          does not prove the site was attacked. The level says how serious the weakness would be if someone
+          tried to exploit it.
+        </p>
+        <div className="about-severity">
+          {SEVERITY_GUIDE.map((s) => (
+            <Card key={s.severity} variant="flat" className="about-severity__item">
+              <div className="about-severity__head">
+                <Badge variant={s.severity} size="md" dot>
+                  {s.label}
+                </Badge>
+                <span className="about-severity__penalty">−{s.penalty} pts each</span>
+              </div>
+              <p className="about-severity__meaning">{s.meaning}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* What it checks */}
       <section className="about-section" aria-labelledby="about-features">
         <h2 className="about-section__title" id="about-features">
           <ShieldCheck size={18} /> What it checks
         </h2>
-        <div className="about-grid">
-          {FEATURES.map((f) => (
-            <Card key={f.title} variant="flat" className="about-feature">
-              <span className="about-feature__icon">{f.icon}</span>
-              <h3 className="about-feature__title">{f.title}</h3>
-              <p className="about-feature__desc">{f.description}</p>
+        <p className="about-section__text">
+          {TOTAL_CHECKS} checks across {CHECK_MODULES.length} modules. <strong>Quick</strong> scans run only
+          Security Headers and SSL / TLS; <strong>Full</strong> scans run everything.
+        </p>
+        <div className="about-modules">
+          {CHECK_MODULES.map((m) => (
+            <Card key={m.id} variant="flat" className="about-module" id={`about-module-${m.id}`}>
+              <div className="about-module__head">
+                <span className="about-feature__icon">{MODULE_ICONS[m.id]}</span>
+                <div className="about-module__heading">
+                  <h3 className="about-feature__title">{m.title}</h3>
+                  <span className="about-module__modes">
+                    {m.modes.length === 2 ? 'Quick & Full scans' : 'Full scans only'} · {m.checks.length} checks
+                  </span>
+                </div>
+              </div>
+              <p className="about-feature__desc">{m.summary}</p>
+              <ul className="about-checks">
+                {m.checks.map((c) => (
+                  <li key={c.name} className="about-check">
+                    <div className="about-check__head">
+                      <Badge variant={c.severity} size="sm">
+                        {c.severity}
+                      </Badge>
+                      <span className="about-check__name">{c.name}</span>
+                    </div>
+                    <p className="about-check__what">{c.what}</p>
+                    <p className="about-check__risk">
+                      <strong>Risk:</strong> {c.risk}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </Card>
           ))}
         </div>
