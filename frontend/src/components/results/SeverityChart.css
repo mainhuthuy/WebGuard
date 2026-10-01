@@ -1,0 +1,113 @@
+/* ============================================================
+   SeverityChart Component Styles
+   Donut chart + severity legend bar.
+   ============================================================ */
+
+.severity-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.severity-chart__chart-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+}
+
+/* ── Legend ───────────────────────────────────────────────── */
+
+.severity-chart__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.severity-legend__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: var(--transition-all);
+}
+
+.severity-legend__item:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.severity-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.severity-legend__dot--critical { background: var(--severity-critical); box-shadow: 0 0 6px rgba(239, 68, 68, 0.4); }
+.severity-legend__dot--high     { background: var(--severity-high); box-shadow: 0 0 6px rgba(249, 115, 22, 0.4); }
+.severity-legend__dot--medium   { background: var(--severity-medium); box-shadow: 0 0 6px rgba(234, 179, 8, 0.4); }
+.severity-legend__dot--low      { background: var(--severity-low); box-shadow: 0 0 6px rgba(59, 130, 246, 0.4); }
+.severity-legend__dot--info     { background: var(--severity-info); }
+
+.severity-legend__label {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.severity-legend__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  min-width: 24px;
+  text-align: right;
+}
+
+/* ── Horizontal bar variant ──────────────────────────────── */
+
+.severity-bar {
+  display: flex;
+  height: 8px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+}
+
+.severity-bar__segment {
+  height: 100%;
+  transition: width var(--duration-slow) var(--ease-out);
+  min-width: 2px;
+}
+
+.severity-bar__segment--critical { background: var(--severity-critical); }
+.severity-bar__segment--high     { background: var(--severity-high); }
+.severity-bar__segment--medium   { background: var(--severity-medium); }
+.severity-bar__segment--low      { background: var(--severity-low); }
+.severity-bar__segment--info     { background: var(--severity-info); }
+
+/* ── Custom Recharts tooltip ─────────────────────────────── */
+
+.severity-tooltip {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-md) !important;
+  padding: var(--space-2) var(--space-3) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.severity-tooltip__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  text-transform: capitalize;
+  margin-bottom: var(--space-1);
+}
+
+.severity-tooltip__value {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
