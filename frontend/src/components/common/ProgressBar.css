@@ -1,0 +1,127 @@
+/* ============================================================
+   ProgressBar Component Styles
+   Animated fill with glow, label, and percentage display.
+   ============================================================ */
+
+.progress {
+  width: 100%;
+}
+
+.progress__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.progress__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.progress__value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+/* ── Track ───────────────────────────────────────────────── */
+
+.progress__track {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.progress__track--sm { height: 4px; }
+.progress__track--md { height: 8px; }
+.progress__track--lg { height: 12px; }
+
+/* ── Fill bar ────────────────────────────────────────────── */
+
+.progress__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--ease-out);
+  position: relative;
+}
+
+/* Color variants */
+.progress__fill--primary {
+  background: linear-gradient(90deg, var(--primary-700), var(--primary));
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
+
+.progress__fill--cyan {
+  background: linear-gradient(90deg, var(--cyan-600), var(--cyan));
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.35);
+}
+
+.progress__fill--emerald {
+  background: linear-gradient(90deg, var(--emerald-600), var(--emerald));
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+
+.progress__fill--danger {
+  background: linear-gradient(90deg, #b91c1c, var(--severity-critical));
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+}
+
+/* Animated shimmer over fill */
+.progress__fill--animated::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Indeterminate (unknown progress) ────────────────────── */
+
+.progress__fill--indeterminate {
+  width: 40% !important;
+  animation: indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* ── Steps variant (segmented progress) ──────────────────── */
+
+.progress__steps {
+  display: flex;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.progress__step {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  transition: background var(--duration-normal) var(--ease-default),
+              box-shadow var(--duration-normal) var(--ease-default);
+}
+
+.progress__step--completed {
+  background: var(--primary);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+
+.progress__step--active {
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+  animation: pulse-glow-cyan 2s infinite ease-in-out;
+}

@@ -1,0 +1,124 @@
+/* ============================================================
+   Badge Component Styles
+   Severity colors: critical, high, medium, low, info
+   Plus: success, primary, neutral
+   ============================================================ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  line-height: 1;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  transition: var(--transition-all);
+}
+
+/* ── Sizes ───────────────────────────────────────────────── */
+
+.badge--sm {
+  font-size: 0.6875rem;  /* 11px */
+  padding: var(--space-0-5) var(--space-2);
+}
+
+.badge--md {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2-5);
+}
+
+.badge--lg {
+  font-size: var(--text-sm);
+  padding: var(--space-1-5) var(--space-3);
+}
+
+/* ── Severity colors ─────────────────────────────────────── */
+
+.badge--critical {
+  background: var(--severity-critical-bg);
+  color: var(--severity-critical);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge--high {
+  background: var(--severity-high-bg);
+  color: var(--severity-high);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+}
+
+.badge--medium {
+  background: var(--severity-medium-bg);
+  color: var(--severity-medium);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+.badge--low {
+  background: var(--severity-low-bg);
+  color: var(--severity-low);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.badge--info {
+  background: var(--severity-info-bg);
+  color: var(--severity-info);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+/* ── Additional variants ─────────────────────────────────── */
+
+.badge--success {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge--primary {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary-300);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.badge--neutral {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--text-secondary);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+/* ── Dot indicator ───────────────────────────────────────── */
+
+.badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.badge--critical .badge__dot { box-shadow: 0 0 6px var(--severity-critical); }
+.badge--high .badge__dot     { box-shadow: 0 0 6px var(--severity-high); }
+.badge--success .badge__dot  { box-shadow: 0 0 6px var(--emerald); }
+
+/* ── Pulsing badge (for live/active states) ──────────────── */
+
+.badge--pulse .badge__dot {
+  animation: pulse-badge 2s infinite ease-in-out;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(0.8); }
+}
+
+/* ── Icon inside badge ───────────────────────────────────── */
+
+.badge__icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.badge--lg .badge__icon {
+  width: 14px;
+  height: 14px;
+}
