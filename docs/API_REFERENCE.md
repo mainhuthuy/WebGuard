@@ -65,67 +65,81 @@ Quản lý vòng đời khởi tạo, giám sát và hủy bỏ các phiên qué
 
 ### 3.1. Khởi tạo phiên quét mới
 - **Endpoint:** `POST /api/v1/scan`
-- **Mô tả:** Tiếp nhận URL mục tiêu, kiểm tra bảo vệ SSRF, khởi tạo bản ghi trong Database. Có thể chọn quét ngầm (background mode) hoặc chỉ khởi tạo chờ client kết nối SSE.
+- **Mô tả:** Tiếp nhận URL mục tiêu, kiểm tra chống SSRF (cú pháp, IP literal và **phân giải DNS** — mọi địa chỉ phân giải phải là IP public), khởi tạo bản ghi `pending` trong Database. Việc quét chỉ bắt đầu khi client mở luồng SSE (mục 3.3).
 - **Request Body:**
 ```json
 {
-  "url": "https://example.com"
+  "url": "https://example.com",
+  "mode": "full"
 }
 ```
+  - `url` (bắt buộc): URL `http://` hoặc `https://` công khai.
+  - `mode` (tùy chọn, mặc định `full`): `quick` chỉ chạy **Headers + SSL/TLS**; `full` chạy cả 5 module.
 - **Response:** `201 Created`
 ```json
 {
   "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
   "target_url": "https://example.com",
+  "mode": "full",
   "status": "pending",
-  "created_at": "2026-09-24T11:00:00Z",
-  "stream_url": "/api/v1/scan/b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9/stream"
+  "created_at": "2026-09-24T11:00:00"
 }
 ```
+> `created_at` và các mốc thời gian khác là **UTC không kèm offset** (naive). Client cần coi chúng là UTC (frontend thêm hậu tố `Z`).
 - **Error Cases:**
-  - `400 Bad Request`: URL không hợp lệ hoặc vi phạm SSRF (trỏ tới dải IP private/localhost).
-  - `422 Unprocessable Content`: Thiếu trường dữ liệu bắt buộc.
+  - `400 Bad Request` (`INVALID_TARGET_URL`): tên miền phân giải về địa chỉ nội bộ / không công khai.
+  - `422 Unprocessable Content`: thiếu `url`, scheme không phải http/https, `mode` không hợp lệ, hoặc `url` là IP không công khai (private, loopback, link-local, CGNAT, reserved...) hay `localhost`.
 
 ### 3.2. Lấy thông tin & kết quả phiên quét
 - **Endpoint:** `GET /api/v1/scan/{scan_id}`
 - **Response:** `200 OK`
 ```json
 {
-  "id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
+  "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
   "target_url": "https://example.com",
+  "mode": "full",
   "status": "completed",
-  "score": 95.0,
-  "grade": "A+",
-  "created_at": "2026-09-24T11:00:00Z",
-  "completed_at": "2026-09-24T11:00:05Z",
+  "created_at": "2026-09-24T11:00:00",
+  "completed_at": "2026-09-24T11:00:05",
+  "total_findings": 1,
   "findings": [
     {
-      "id": 1,
       "module": "headers",
-      "name": "Missing Content-Security-Policy",
-      "severity": "medium",
-      "description": "Header Content-Security-Policy chưa được thiết lập.",
-      "remediation": "Cấu hình header Content-Security-Policy để ngăn ngừa XSS.",
-      "target_url": "https://example.com"
+      "name": "content-security-policy",
+      "severity": "high",
+      "description": "CSP giúp ngăn chặn tấn công XSS...",
+      "remediation": "Thêm header: Content-Security-Policy: default-src 'self';",
+      "url": "https://example.com"
     }
-  ]
+  ],
+  "scoring": { "score": 90, "grade": "A", "total_findings": 1 }
 }
 ```
+- `scoring` là `null` khi phiên quét chưa hoàn tất. `severity` ∈ `critical | high | medium | low`.
+- **Error Cases:** `404 Not Found` (`SCAN_NOT_FOUND`).
 
 ### 3.3. Luồng sự kiện thời gian thực (SSE Stream)
 - **Endpoint:** `GET /api/v1/scan/{scan_id}/stream`
-- **Header phản hồi:** `Content-Type: text/event-stream`, `Cache-Control: no-cache`
-- **Mô tả:** Truyền trực tiếp các sự kiện tiến trình quét từng module theo định dạng SSE.
-- **Các bước sự kiện tiêu biểu:**
+- **Header phản hồi:** `Content-Type: text/event-stream`
+- **Mô tả:** Bắt đầu thực thi quét và truyền các sự kiện tiến trình theo định dạng SSE (`event:` + `data:` JSON). Mở lại luồng của một phiên đã `completed` sẽ phát lại duy nhất sự kiện `complete`. **Không** mở lại luồng của phiên đang chạy (sẽ khởi động quét lần nữa) — client không nên tự reconnect.
+- **Các loại sự kiện** (`event`): `start`, `module_start`, `module_completed`, `scoring`, `complete`, `error`.
 ```text
-data: {"event": "init", "scan_id": "b3e...", "progress": 0, "message": "Bắt đầu quét..."}
+event: start
+data: {"event": "start", "scan_id": "b3e...", "progress": 5, "message": "Bắt đầu phiên quét...", "module": null, "findings": [], "data": {"total_modules": 5}}
 
-data: {"event": "step", "scan_id": "b3e...", "progress": 20, "module": "headers", "message": "Đang phân tích HTTP Headers..."}
+event: module_start
+data: {"event": "module_start", "scan_id": "b3e...", "progress": 10, "module": "headers", "message": "Đang kiểm tra: ...", "findings": [], "data": null}
 
-data: {"event": "step", "scan_id": "b3e...", "progress": 40, "module": "cookies", "message": "Đang kiểm tra cờ bảo mật Cookie..."}
+event: module_completed
+data: {"event": "module_completed", "scan_id": "b3e...", "progress": 25, "module": "headers", "message": "Hoàn thành headers (phát hiện 9 vấn đề)", "findings": [ ... ], "data": {"count": 9}}
 
-data: {"event": "complete", "scan_id": "b3e...", "progress": 100, "message": "Quét hoàn tất!", "findings": [...], "data": {"scoring": {"score": 95.0, "grade": "A+"}}}
+event: scoring
+data: {"event": "scoring", "progress": 95, "data": {"scoring": {"score": 46, "grade": "F", "total_findings": 10}}, ...}
+
+event: complete
+data: {"event": "complete", "progress": 100, "findings": [ ... tất cả findings ... ], "data": {"url": "...", "total_findings": 10, "scoring": {"score": 46, "grade": "F", "total_findings": 10}}, ...}
 ```
+- Tên `module` không được chuẩn hóa (ví dụ module CORS báo là `"CORS"`); client nên so sánh không phân biệt hoa thường.
 
 ### 3.4. Hủy bỏ phiên quét
 - **Endpoint:** `POST /api/v1/scan/{scan_id}/cancel`
@@ -140,17 +154,6 @@ data: {"event": "complete", "scan_id": "b3e...", "progress": 100, "message": "Qu
 ```
 - **Error Cases:**
   - `400 Bad Request`: Khi phiên quét đã ở trạng thái kết thúc (`completed`, `failed`, `cancelled`).
-
-### 3.5. Xóa phiên quét
-- **Endpoint:** `DELETE /api/v1/scan/{scan_id}`
-- **Mô tả:** Xóa vĩnh viễn phiên quét và toàn bộ các findings liên quan (Cascade delete).
-- **Response:** `200 OK`
-```json
-{
-  "message": "Đã xóa phiên quét và các findings liên quan thành công.",
-  "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9"
-}
-```
 
 ---
 
@@ -169,18 +172,17 @@ Xuất và định dạng báo cáo kiểm toán bảo mật.
     {
       "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
       "target_url": "https://example.com",
+      "mode": "full",
       "status": "completed",
-      "score": 85.0,
-      "grade": "B",
-      "created_at": "2026-09-24T11:00:00Z",
-      "completed_at": "2026-09-24T11:00:08Z",
+      "created_at": "2026-09-24 11:00:00",
+      "completed_at": "2026-09-24 11:00:08",
       "duration_seconds": 8.0,
+      "scoring": { "score": 85, "grade": "B", "total_findings": 4 },
       "severity_counts": {
         "critical": 0,
         "high": 1,
         "medium": 2,
-        "low": 0,
-        "info": 1
+        "low": 1
       },
       "total_findings": 4,
       "findings": [...]
@@ -192,18 +194,17 @@ Xuất và định dạng báo cáo kiểm toán bảo mật.
 
 ## 5. History & Analytics API (`/history`)
 
-Tra cứu lịch sử quét với bộ lọc động và thống kê số liệu tổng quan.
+Tra cứu lịch sử quét với bộ lọc động và thống kê số liệu tổng quan. Chi tiết một phiên quét lấy qua `GET /api/v1/scan/{scan_id}` (mục 3.2).
 
 ### 5.1. Danh sách lịch sử quét có phân trang & lọc
 - **Endpoint:** `GET /api/v1/history`
 - **Query Parameters:**
-  - `target_url` (string, tùy chọn): Tìm kiếm tương đối theo URL mục tiêu.
-  - `status` (string, tùy chọn): Lọc theo trạng thái (`completed`, `failed`, `running`, `cancelled`).
+  - `search_url` (string, tùy chọn): Tìm tương đối (không phân biệt hoa thường) theo URL mục tiêu.
+  - `status` (string, tùy chọn): `pending`, `running`, `completed`, `failed`, `cancelled`.
   - `grade` (string, tùy chọn): Lọc theo xếp hạng (`A+`, `A`, `B`, `C`, `F`).
-  - `start_date` (ISO datetime, tùy chọn): Giới hạn thời gian bắt đầu.
-  - `end_date` (ISO datetime, tùy chọn): Giới hạn thời gian kết thúc.
-  - `page` (integer, mặc định `1`, min `1`): Trang hiện tại.
-  - `page_size` (integer, mặc định `10`, min `1`, max `100`): Số bản ghi trên mỗi trang.
+  - `from_date` / `to_date` (ISO datetime, tùy chọn): Giới hạn thời điểm tạo.
+  - `sort_by` (`created_at` mặc định | `score`) và `sort_order` (`desc` mặc định | `asc`).
+  - `page` (integer, mặc định `1`, min `1`) và `page_size` (mặc định `10`, min `1`, max `100`).
 - **Response:** `200 OK`
 ```json
 {
@@ -212,53 +213,53 @@ Tra cứu lịch sử quét với bộ lọc động và thống kê số liệu
       "id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9",
       "target_url": "https://example.com",
       "status": "completed",
-      "score": 95.0,
+      "mode": "full",
+      "score": 95,
       "grade": "A+",
-      "created_at": "2026-09-24T11:00:00Z",
-      "completed_at": "2026-09-24T11:00:05Z",
-      "total_findings": 1
+      "total_findings": 1,
+      "created_at": "2026-09-24T11:00:00",
+      "completed_at": "2026-09-24T11:00:05",
+      "duration_seconds": 5.0
     }
   ],
   "total": 45,
   "page": 1,
   "page_size": 10,
-  "total_pages": 5
+  "total_pages": 5,
+  "has_next": true,
+  "has_prev": false
 }
 ```
+- `score` và `grade` là `null` với phiên chưa hoàn tất, thất bại hoặc bị hủy.
 
-### 5.2. Thống kê số liệu tổng hợp (Dashboard Analytics)
+### 5.2. Thống kê số liệu tổng hợp
 - **Endpoint:** `GET /api/v1/history/stats`
-- **Mô tả:** Thống kê tổng số phiên quét, điểm số trung bình, phân bổ theo xếp hạng (Grade Distribution) và trạng thái.
 - **Response:** `200 OK`
 ```json
 {
   "total_scans": 45,
+  "completed_scans": 40,
+  "failed_scans": 3,
+  "cancelled_scans": 2,
   "average_score": 82.4,
-  "grade_distribution": {
-    "A+": 12,
-    "A": 15,
-    "B": 10,
-    "C": 5,
-    "F": 3
-  },
-  "status_distribution": {
-    "completed": 40,
-    "failed": 3,
-    "cancelled": 2
-  }
+  "grade_distribution": { "A+": 12, "A": 15, "B": 10, "C": 5, "F": 3 }
 }
 ```
 
-### 5.3. Xem chi tiết lịch sử một phiên quét
-- **Endpoint:** `GET /api/v1/history/{scan_id}`
-- **Response:** `200 OK` (Trả về chi tiết phiên quét kèm toàn bộ danh sách findings).
-
-### 5.4. Xóa một bản ghi lịch sử
+### 5.3. Xóa một bản ghi lịch sử
 - **Endpoint:** `DELETE /api/v1/history/{scan_id}`
+- **Mô tả:** Xóa vĩnh viễn phiên quét và toàn bộ findings liên quan (cascade).
 - **Response:** `200 OK`
 ```json
 {
-  "message": "Đã xóa lịch sử phiên quét thành công.",
-  "scan_id": "b3e0c0ea-5b48-436a-bdf5-d5bfa780d6b9"
+  "deleted": true,
+  "message": "Đã xóa thành công phiên quét b3e0... khỏi lịch sử",
+  "deleted_count": 1
 }
 ```
+- **Error Cases:** `404 Not Found` (`SCAN_NOT_FOUND`).
+
+### 5.4. Dọn dẹp lịch sử hàng loạt
+- **Endpoint:** `DELETE /api/v1/history?older_than_days=30`
+- **Mô tả:** Xóa các phiên quét cũ hơn `older_than_days` ngày; bỏ tham số để xóa toàn bộ.
+- **Response:** `200 OK` — cùng dạng với mục 5.3, `deleted_count` là số bản ghi đã xóa.

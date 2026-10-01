@@ -79,6 +79,7 @@ erDiagram
     SCANS {
         string id PK "UUID v4 (36 chars)"
         string target_url "URL mục tiêu quét"
+        string mode "quick | full (mặc định full)"
         string status "pending | running | completed | failed | cancelled"
         float score "Điểm an toàn (0.0 - 100.0)"
         string grade "Hạng đánh giá (A+, A, B, C, F)"
@@ -170,8 +171,9 @@ sequenceDiagram
 Hệ thống được thiết kế theo nguyên tắc "Secure by Default" nhằm bảo vệ chính máy chủ WebGuard:
 
 1. **Phòng chống SSRF (Server-Side Request Forgery)**:
-   - Cơ chế xác thực đầu vào (`ScanCreateRequest`) tự động phân giải DNS của `target_url` và kiểm tra đối chiếu qua thư viện `ipaddress`.
-   - Ngăn chặn triệt để các địa chỉ IP nội bộ (Private IPs: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), địa chỉ Loopback (`127.0.0.1`, `localhost`), Link-local (`169.254.0.0/16`) và Cloud Metadata IP (`169.254.169.254`).
+   - Hai lớp kiểm tra: (1) `ScanCreateRequest` kiểm tra cú pháp, `localhost` và IP literal bằng `ipaddress` (`is_global`); (2) `assert_public_target` (`app/core/security.py`) phân giải DNS của hostname **không chặn event loop** và từ chối nếu *bất kỳ* địa chỉ nào không phải IP public.
+   - Chặn các địa chỉ nội bộ (Private IPs: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), Loopback (`127.0.0.1`, `::1`), Link-local (`169.254.0.0/16`, gồm Cloud Metadata `169.254.169.254`), CGNAT, reserved.
+   - Giới hạn đã biết: kiểm tra diễn ra lúc tạo scan nên không chống hoàn toàn DNS rebinding; module không theo redirect (`follow_redirects` mặc định tắt) và mọi request tới mục tiêu có timeout 10 giây.
 
 2. **Cấu hình CORS & An toàn Middleware**:
    - `CORSMiddleware` cấu hình các Origin được phép truy cập theo biến môi trường `ALLOWED_HOSTS`.
@@ -234,3 +236,28 @@ backend/
     ├── unit/                   # Unit tests cho Modules & Services
     └── integration/            # Integration & E2E API tests
 ```
+
+---
+
+## 6. Kiến trúc Frontend (React + Vite + TypeScript)
+
+```text
+frontend/src/
+├── App.tsx              # Điều hướng giữa các view, lazy-load Results/About
+├── config.ts            # API_BASE_URL, USE_MOCK (VITE_USE_MOCK)
+├── components/          # common (Button, Card, Badge, ProgressBar, Modal), layout, results, scanner
+├── pages/               # ScanPage, ResultsPage, HistoryPage, AboutPage
+├── hooks/
+│   ├── useSSE.ts        # EventSource (không tự reconnect) hoặc mô phỏng mock
+│   ├── useScan.ts       # Vòng đời quét: tạo scan -> stream -> kết quả / lỗi / hủy
+│   ├── useHistory.ts    # Lịch sử: lọc, sắp xếp, phân trang, thống kê, xóa (server-side)
+│   └── useReport.ts     # Xuất báo cáo: ưu tiên server, fallback client-side
+├── services/            # apiClient (Axios + ApiError), scanApi, reportApi, mappers (DTO -> domain)
+├── types/               # scan.ts (domain), api.ts (DTO khớp schemas backend)
+└── utils/               # exportReport (JSON/HTML), mockScan / mockHistory (chế độ demo)
+```
+
+- **Luồng quét thật:** `useScan.startScan` -> `POST /scan` (kèm `mode`) -> mở `EventSource` tới `/scan/{id}/stream` -> map sự kiện `module_start` / `module_completed` / `complete` thành trạng thái UI. Lỗi tạo scan, lỗi stream hay mất kết nối đều chuyển UI sang trạng thái lỗi kèm thông báo.
+- **Mappers:** backend trả giờ UTC không offset, tên module chưa chuẩn hóa (`CORS`) và `remediation` chứa đoạn cấu hình sau `Thêm header:` / `Thêm cookie flag:` — `services/mappers.ts` chuẩn hóa các điểm này và rút ra `snippet` để người dùng sao chép.
+- **Chế độ mock:** đặt `VITE_USE_MOCK=true` để chạy giao diện không cần backend (mô phỏng SSE, dữ liệu lịch sử giả).
+- **Triển khai:** nginx phục vụ bản build và proxy `/api`; luồng SSE (`/api/v1/scan/*/stream`) tắt buffering và có `proxy_read_timeout` dài.
