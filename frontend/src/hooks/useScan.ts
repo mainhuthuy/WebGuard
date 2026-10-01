@@ -7,6 +7,8 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { buildMockScanResult } from '../utils/mockScan'
+import { scanApi, toApiError, mapFinding, summarize, toGrade, toModuleName } from '../services'
+import { USE_MOCK } from '../config'
 import { useSSE } from './useSSE'
 import type { SSEEvent } from './useSSE'
 import type {
@@ -14,6 +16,8 @@ import type {
   ScanResult,
   ModuleName,
   Grade,
+  ApiFinding,
+  ApiScoring,
 } from '../types'
 
 /* ── Internal types ───────────────────────────────────────── */
@@ -68,7 +72,7 @@ export function buildModuleSteps(mode: ScanMode): ModuleStep[] {
 export interface UseScanOptions {
   /**
    * Use mock SSE simulation instead of real backend.
-   * @default true
+   * @default USE_MOCK (VITE_USE_MOCK env)
    */
   useMock?: boolean
 }
@@ -94,6 +98,8 @@ export interface UseScanReturn {
   errored: boolean
   /** Completed scan result (null until scan finishes successfully) */
   result: ScanResult | null
+  /** Human-readable error when the scan failed to start or errored */
+  errorMessage: string | null
   /** Start a new scan */
   startScan: (url: string, mode: ScanMode) => void
   /** Cancel the running scan */
@@ -105,7 +111,7 @@ export interface UseScanReturn {
 /* ── useScan hook ─────────────────────────────────────────── */
 
 export function useScan(options: UseScanOptions = {}): UseScanReturn {
-  const { useMock = true } = options
+  const { useMock = USE_MOCK } = options
 
   // Core state
   const [phase, setPhase] = useState<ScanPhase>('idle')
@@ -114,6 +120,7 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
   const [modules, setModules] = useState<ModuleStep[]>([])
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [result, setResult] = useState<ScanResult | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   // Refs for values needed inside SSE callbacks (avoid stale closures)
   const scanMetaRef = useRef<{
@@ -122,6 +129,10 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
     startTime: string
   }>({ url: '', mode: 'full', startTime: '' })
   const latestModulesRef = useRef<ModuleStep[]>([])
+  /** Id of the backend scan currently streaming (real mode) */
+  const activeScanIdRef = useRef<string | null>(null)
+  /** Bumped on every start/cancel/reset so late async work can be ignored */
+  const runIdRef = useRef(0)
 
   /** Handle each SSE event and update state accordingly */
   const handleSSEEvent = useCallback((event: SSEEvent) => {
@@ -137,10 +148,12 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
     ])
 
     // Module state transitions
-    if (event.event === 'module_start' && event.module) {
+    const moduleId = event.module ? toModuleName(event.module) : null
+
+    if (event.event === 'module_start' && moduleId) {
       setModules((prev) => {
         const next = prev.map((m) =>
-          m.id === event.module
+          m.id === moduleId
             ? { ...m, status: 'active' as const, message: 'Analyzing...' }
             : m
         )
@@ -149,15 +162,15 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
       })
     }
 
-    if (event.event === 'module_completed' && event.module) {
+    if (event.event === 'module_completed' && moduleId) {
       setModules((prev) => {
         const next = prev.map((m) =>
-          m.id === event.module
+          m.id === moduleId
             ? {
                 ...m,
                 status: 'completed' as const,
                 message: event.message,
-                findingsCount: event.findings_count ?? 0,
+                findingsCount: event.findings_count ?? event.findings?.length ?? 0,
               }
             : m
         )
@@ -169,80 +182,136 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
     // Scan completed successfully
     if (event.event === 'complete') {
       const meta = scanMetaRef.current
-      const grade = (event.data?.grade as Grade) ?? 'B'
-      const score = (event.data?.score as number) ?? 72
-      const scanResult = buildMockScanResult(
-        event.scan_id,
-        meta.url,
-        meta.mode,
-        latestModulesRef.current,
-        grade,
-        score,
-        meta.startTime,
-      )
-      setResult(scanResult)
+      const apiFindings = event.findings as ApiFinding[] | null | undefined
+      const scoring = event.data?.scoring as ApiScoring | undefined
+
+      if (apiFindings && scoring) {
+        // Real backend payload: findings + scoring come with the event
+        const findings = apiFindings.map(mapFinding)
+        const completedAt = new Date().toISOString()
+        setResult({
+          scan_id: event.scan_id,
+          url: meta.url,
+          mode: meta.mode,
+          status: 'completed',
+          grade: toGrade(scoring.grade),
+          score: scoring.score,
+          findings,
+          summary: summarize(findings),
+          started_at: meta.startTime,
+          completed_at: completedAt,
+          duration_ms: new Date(completedAt).getTime() - new Date(meta.startTime).getTime(),
+        })
+      } else {
+        // Mock payload: synthesise findings from module counts
+        const grade = (event.data?.grade as Grade) ?? 'B'
+        const score = (event.data?.score as number) ?? 72
+        setResult(
+          buildMockScanResult(
+            event.scan_id,
+            meta.url,
+            meta.mode,
+            latestModulesRef.current,
+            grade,
+            score,
+            meta.startTime,
+          ),
+        )
+      }
       setPhase('completed')
     }
 
     // Scan errored
     if (event.event === 'error') {
+      setErrorMessage(event.message)
       setPhase('errored')
     }
   }, [])
 
   // Wire up SSE
-  const { connect, disconnect } = useSSE({
+  const { connect, disconnect, statusRef } = useSSE({
     onEvent: handleSSEEvent,
+    // Connection dropped before a terminal event (complete/error resets status to 'closed')
+    onError: () => {
+      if (statusRef.current === 'error') {
+        setErrorMessage('Lost connection to the scan stream.')
+        setPhase('errored')
+      }
+    },
     useMock,
   })
 
   /** Start a new scan */
   const startScan = useCallback(
     (url: string, mode: ScanMode) => {
-      // Reset all state
+      const runId = ++runIdRef.current
       const startTime = new Date().toISOString()
-      const scanId = `scan_${Date.now()}`
 
       setScanUrl(url)
       setPhase('scanning')
       setProgress(0)
       setLogs([])
       setResult(null)
+      setErrorMessage(null)
+      activeScanIdRef.current = null
 
-      const initialModules = buildModuleSteps(mode)
+      // The backend always runs every module, so quick mode only applies to the mock
+      const initialModules = buildModuleSteps(useMock ? mode : 'full')
       setModules(initialModules)
       latestModulesRef.current = initialModules
 
-      // Save meta for result building
       scanMetaRef.current = { url, mode, startTime }
 
-      // Connect to SSE stream
-      // In mock mode, url is passed as the stream URL for display purposes
-      // In real mode, this would be the actual API endpoint like `/api/v1/scan/{scanId}/stream`
-      const streamUrl = useMock
-        ? url
-        : `/api/v1/scan/${scanId}/stream`
+      if (useMock) {
+        // Mock mode: the "stream URL" is just the target URL for display
+        connect(url, `scan_${Date.now()}`, mode)
+        return
+      }
 
-      connect(streamUrl, scanId, mode)
+      // Real mode: create the scan first, then open its SSE stream
+      scanApi
+        .createScan(url)
+        .then((scan) => {
+          if (runId !== runIdRef.current) return // cancelled / superseded meanwhile
+          activeScanIdRef.current = scan.scan_id
+          connect(scanApi.streamUrl(scan.scan_id), scan.scan_id, mode)
+        })
+        .catch((err) => {
+          if (runId !== runIdRef.current) return
+          const message = toApiError(err).message
+          setLogs([{ time: new Date().toISOString(), event: 'error', message }])
+          setErrorMessage(message)
+          setPhase('errored')
+        })
     },
     [connect, useMock],
   )
 
   /** Cancel the running scan */
   const cancelScan = useCallback(() => {
+    runIdRef.current++
     disconnect()
+    const scanId = activeScanIdRef.current
+    activeScanIdRef.current = null
+    if (!useMock && scanId) {
+      // Best effort: the scan may already have finished on the server
+      scanApi.cancelScan(scanId).catch(() => undefined)
+    }
     setPhase('idle')
-  }, [disconnect])
+  }, [disconnect, useMock])
 
   /** Reset all state back to idle */
   const reset = useCallback(() => {
+    runIdRef.current++
     disconnect()
+    activeScanIdRef.current = null
     setPhase('idle')
     setScanUrl('')
     setProgress(0)
     setModules([])
     setLogs([])
     setResult(null)
+    setErrorMessage(null)
   }, [disconnect])
 
   // Derived boolean states for convenience
@@ -260,6 +329,7 @@ export function useScan(options: UseScanOptions = {}): UseScanReturn {
     completed,
     errored,
     result,
+    errorMessage,
     startScan,
     cancelScan,
     reset,

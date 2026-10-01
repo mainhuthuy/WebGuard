@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { useRef, useCallback, useEffect } from 'react'
+import { USE_MOCK } from '../config'
 import type { ScanMode, ModuleName } from '../types'
 
 /* ── SSE Event types (mirrors backend ScanStreamEvent) ────── */
@@ -45,7 +46,7 @@ export interface UseSSEOptions {
   /**
    * Use mock SSE simulation instead of real EventSource.
    * Useful during development or when backend is unavailable.
-   * @default true (will switch to false once API services are wired in 3.11)
+   * @default USE_MOCK (VITE_USE_MOCK env)
    */
   useMock?: boolean
 }
@@ -53,7 +54,7 @@ export interface UseSSEOptions {
 /* ── Hook return type ─────────────────────────────────────── */
 
 export interface UseSSEReturn {
-  /** Open an SSE connection to the given scan stream URL */
+  /** Open an SSE connection (mock mode: streamUrl is the target URL, scanId/mode drive the simulation) */
   connect: (url: string, scanId: string, mode: ScanMode) => void
   /** Close the current SSE connection */
   disconnect: () => void
@@ -214,13 +215,11 @@ function createRealSSEStream(
     })
   }
 
+  // Do NOT let EventSource auto-reconnect: the backend would start the scan
+  // stream again for a still-running scan. Treat any error as terminal.
   eventSource.onerror = (e) => {
+    eventSource.close()
     onError?.(e)
-    // EventSource will try to reconnect automatically on transient errors;
-    // we close only if the connection was fully lost (readyState === CLOSED)
-    if (eventSource.readyState === EventSource.CLOSED) {
-      eventSource.close()
-    }
   }
 
   return {
@@ -233,7 +232,7 @@ function createRealSSEStream(
 /* ── useSSE hook ──────────────────────────────────────────── */
 
 export function useSSE(options: UseSSEOptions): UseSSEReturn {
-  const { onEvent, onOpen, onClose, onError, useMock = true } = options
+  const { onEvent, onOpen, onClose, onError, useMock = USE_MOCK } = options
   const cancelRef = useRef<{ cancel: () => void } | null>(null)
   const statusRef = useRef<SSEStatus>('idle')
 
