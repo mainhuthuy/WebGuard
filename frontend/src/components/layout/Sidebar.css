@@ -89,6 +89,16 @@
   color: var(--text-primary);
 }
 
+.sidebar--collapsed .sidebar__header {
+  justify-content: center;
+  padding: 0;
+}
+
+/* The 72px rail has no room for the logo next to the toggle: show only the toggle */
+.sidebar--collapsed .sidebar__brand {
+  display: none;
+}
+
 .sidebar--collapsed .sidebar__toggle {
   margin-left: auto;
   margin-right: auto;
@@ -226,7 +236,7 @@
 }
 
 .sidebar--collapsed .sidebar__footer-text {
-  opacity: 0;
+  display: none;
 }
 
 .sidebar--collapsed .sidebar__footer-content {
