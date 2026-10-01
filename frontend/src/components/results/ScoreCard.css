@@ -52,7 +52,7 @@
 }
 
 .score-card__letter {
-  font-size: 3.5rem;
+  font-size: 4rem;
   font-weight: var(--font-extrabold);
   line-height: 1;
   letter-spacing: var(--tracking-tighter);

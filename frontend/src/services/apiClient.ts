@@ -39,7 +39,8 @@ export function toApiError(err: unknown): ApiError {
     // Validation errors carry the useful text in details[0].message
     const firstDetail = Array.isArray(body?.error?.details) ? body.error.details[0]?.message : undefined
     return new ApiError(
-      firstDetail ?? body?.error?.message ?? detail ?? err.message,
+      // Pydantic prefixes custom validator messages with "Value error, " — not useful to users
+      (firstDetail ?? body?.error?.message ?? detail ?? err.message).replace(/^Value error,\s*/i, ''),
       err.response.status,
       body?.error?.code ?? 'HTTP_ERROR',
     )

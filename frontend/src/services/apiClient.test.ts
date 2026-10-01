@@ -45,7 +45,7 @@ describe('toApiError', () => {
         },
       }),
     )
-    expect(err.message).toBe('Value error, localhost is not allowed')
+    expect(err.message).toBe('localhost is not allowed')
     expect(err.code).toBe('VALIDATION_ERROR')
   })
 
@@ -58,5 +58,18 @@ describe('toApiError', () => {
   it('wraps unknown values', () => {
     expect(toApiError(new Error('oops')).message).toBe('oops')
     expect(toApiError('weird').code).toBe('UNKNOWN')
+  })
+})
+
+describe('toApiError — message cleanup', () => {
+  it('strips the "Value error, " prefix Pydantic adds to custom validator messages', () => {
+    const err = toApiError(
+      axiosErrorWith(422, { error: { details: [{ message: 'Value error, Không được phép quét localhost' }] } }),
+    )
+    expect(err.message).toBe('Không được phép quét localhost')
+  })
+
+  it('leaves other messages untouched', () => {
+    expect(toApiError(axiosErrorWith(404, { error: { message: 'Scan not found' } })).message).toBe('Scan not found')
   })
 })

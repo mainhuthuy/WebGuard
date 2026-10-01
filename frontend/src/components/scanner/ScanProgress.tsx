@@ -118,7 +118,7 @@ export default function ScanProgress({
           color={errored ? 'danger' : completed ? 'emerald' : 'cyan'}
           size="md"
           animated={!completed}
-          label={completed ? 'Completed' : 'Scan Progress'}
+          label={errored ? 'Failed' : completed ? 'Completed' : 'Scan Progress'}
         />
       </div>
 
