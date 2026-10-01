@@ -14,17 +14,10 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
   flex-shrink: 0;
-  transition: margin-left var(--duration-slow) var(--ease-default);
 }
 
-/* Offset for sidebar */
-.footer--with-sidebar {
-  margin-left: var(--sidebar-width);
-}
-
-.footer--with-sidebar-collapsed {
-  margin-left: var(--sidebar-collapsed);
-}
+/* No sidebar offset here: the footer sits inside .app-main, which is already shifted by the
+   sidebar width (and follows its collapsed state). Adding a margin would offset it twice. */
 
 .footer__left {
   display: flex;
@@ -75,11 +68,6 @@
     padding: var(--space-3) var(--space-4);
     gap: var(--space-1);
     text-align: center;
-  }
-
-  .footer--with-sidebar,
-  .footer--with-sidebar-collapsed {
-    margin-left: 0;
   }
 
   .footer__right {
