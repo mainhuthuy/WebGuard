@@ -24,7 +24,7 @@ services:
       - "5173:5173"
     volumes:
       - ../frontend/src:/app/src
-    command: pnpm dev --host 0.0.0.0
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend
     restart: unless-stopped

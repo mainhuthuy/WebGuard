@@ -54,7 +54,7 @@ For detailed setup instructions, see [SETUP_GUIDE.md](docs/SETUP_GUIDE.md).
 | Layer | Technology |
 |-------|------------|
 | Backend | Python 3.12+ · FastAPI · SQLAlchemy · SQLite |
-| Frontend | React · TypeScript · Vite · pnpm |
+| Frontend | React · TypeScript · Vite · npm |
 | DevOps | Docker · Docker Compose · GitHub Actions |
 | Testing | pytest · Vitest · React Testing Library |
 | Code Quality | Ruff · Black · ESLint · Prettier · Pre-commit |
