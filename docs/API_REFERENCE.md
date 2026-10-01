@@ -17,19 +17,23 @@ Tài liệu đặc tả chi tiết giao diện lập trình ứng dụng (RESTfu
 | Header Name | Kiểu | Bắt buộc | Mô tả |
 |-------------|------|----------|-------|
 | `Content-Type` | String | Có (POST) | `application/json` |
-| `X-Correlation-ID` | String | Không | Mã định danh truy vết luồng xử lý do client truyền hoặc do server sinh tự động |
+| `X-Request-ID` | String | Không | Mã định danh truy vết do client truyền; nếu không có, server tự sinh UUID. Luôn được trả lại trong header phản hồi cùng `X-Process-Time` |
 
-### Cấu trúc phản hồi lỗi chuẩn (RFC 7807 Standard Error Format)
-Tất cả các lỗi nghiệp vụ từ server (4xx, 5xx) đều có cấu trúc JSON đồng nhất:
+### Cấu trúc phản hồi lỗi chuẩn
+Tất cả các lỗi từ server (4xx, 5xx) đều có cấu trúc JSON đồng nhất (chuẩn riêng của project, không phải RFC 7807). Mã HTTP nằm ở status của response:
 ```json
 {
+  "success": false,
   "error": {
-    "code": "NOT_FOUND",
-    "message": "Không tìm thấy phiên quét có ID: 123e4567-e89b-12d3-a456-426614174000",
-    "status_code": 404
+    "code": "SCAN_NOT_FOUND",
+    "message": "Lượt quét với ID '123e4567-e89b-12d3-a456-426614174000' không tồn tại",
+    "details": { "scan_id": "123e4567-e89b-12d3-a456-426614174000" }
   }
 }
 ```
+Các mã `code` hiện có: `SCAN_NOT_FOUND` (404), `INVALID_TARGET_URL` (400), `VALIDATION_ERROR` (422, `details` là danh sách `{field, message, type}`), `SCAN_EXECUTION_ERROR` (500), `RATE_LIMIT_EXCEEDED` (429), `HTTP_<status>` (lỗi HTTP chuẩn), `INTERNAL_SERVER_ERROR` (500).
+
+> Ví dụ: `POST /scan/{id}/cancel` khi scan đã kết thúc trả `400` với `error.code = "HTTP_400"` và `error.message` mô tả lý do (lỗi `HTTPException` cũng đi qua bộ xử lý chung).
 
 ---
 
@@ -153,7 +157,8 @@ data: {"event": "complete", "progress": 100, "findings": [ ... tất cả findin
 }
 ```
 - **Error Cases:**
-  - `400 Bad Request`: Khi phiên quét đã ở trạng thái kết thúc (`completed`, `failed`, `cancelled`).
+  - `400 Bad Request` (`HTTP_400`): Khi phiên quét đã ở trạng thái kết thúc (`completed`, `failed`, `cancelled`).
+  - `404 Not Found` (`SCAN_NOT_FOUND`).
 
 ---
 

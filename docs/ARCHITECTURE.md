@@ -13,14 +13,14 @@ WebGuard là công cụ đánh giá an ninh mạng và phát hiện lỗi cấu 
 ```mermaid
 flowchart TB
     subgraph ClientLayer["Lớp Client / Giao diện"]
-        UI["Web UI / Dashboard (Vite + React / Tailwind)"]
+        UI["Web UI / Dashboard (Vite + React + TypeScript)"]
         CLI["CLI Scanner / Curl"]
         Browser["Trình duyệt / SSE Consumer"]
     end
 
     subgraph APILayer["Lớp API & Gateway (FastAPI)"]
         CORSMW["CORS Middleware"]
-        LoggingMW["Request Logging Middleware (Correlation ID)"]
+        LoggingMW["Request Logging Middleware (X-Request-ID)"]
         ExceptionH["Global Exception Handlers (AppError)"]
         
         subgraph Routers["API Routers (v1)"]
@@ -176,20 +176,22 @@ Hệ thống được thiết kế theo nguyên tắc "Secure by Default" nhằm
    - Giới hạn đã biết: kiểm tra diễn ra lúc tạo scan nên không chống hoàn toàn DNS rebinding; module không theo redirect (`follow_redirects` mặc định tắt) và mọi request tới mục tiêu có timeout 10 giây.
 
 2. **Cấu hình CORS & An toàn Middleware**:
-   - `CORSMiddleware` cấu hình các Origin được phép truy cập theo biến môi trường `ALLOWED_HOSTS`.
-   - `RequestLoggingMiddleware` tự động sinh mã định danh duy nhất `X-Correlation-ID` cho mỗi HTTP request để hỗ trợ truy vết lỗi (Distributed Tracing).
+   - `CORSMiddleware` cấu hình các Origin được phép truy cập theo biến môi trường `WEBGUARD_CORS_ORIGINS` (mặc định `*` cho môi trường dev — phải siết lại khi triển khai).
+   - `RequestLoggingMiddleware` gắn mã `X-Request-ID` cho mỗi HTTP request (dùng lại giá trị client gửi lên nếu có, hoặc sinh UUID mới), kèm `X-Process-Time`, để truy vết lỗi trong log.
 
-3. **Global Exception Handling (RFC 7807 Standard)**:
-   - Các ngoại lệ nghiệp vụ thừa kế từ `AppError` (`NotFoundError`, `ValidationError`, `ScanExecutionError`) luôn trả về payload JSON có cấu trúc chuẩn mực:
+3. **Global Exception Handling (định dạng lỗi thống nhất của project)**:
+   - Các ngoại lệ nghiệp vụ thừa kế từ `WebGuardException` (`ScanNotFoundException`, `InvalidTargetException`, `ScanExecutionException`, `RateLimitExceededException`), cùng lỗi validation (422), lỗi HTTP chuẩn và lỗi không lường trước (500), đều trả về cùng một cấu trúc JSON:
      ```json
      {
+       "success": false,
        "error": {
-         "code": "NOT_FOUND",
-         "message": "Không tìm thấy phiên quét có ID: ...",
-         "status_code": 404
+         "code": "SCAN_NOT_FOUND",
+         "message": "Lượt quét với ID '...' không tồn tại",
+         "details": { "scan_id": "..." }
        }
      }
      ```
+   - Đây là chuẩn riêng của project (không phải RFC 7807 `application/problem+json`). Mã HTTP nằm ở status của response; `details` chỉ chứa chi tiết khi có (hoặc khi `DEBUG=true` với lỗi 500).
 
 ---
 
@@ -207,8 +209,9 @@ backend/
 │   ├── core/                   # Cấu hình lõi & Middleware
 │   │   ├── config.py           # Pydantic Settings
 │   │   ├── errors.py           # Custom Exceptions & Handlers
-│   │   ├── logging.py          # Loguru Structured Logger
-│   │   └── middleware.py       # Correlation ID & Timing Middleware
+│   │   ├── logging.py          # Structured logging (JSON / console formatter)
+│   │   ├── security.py         # assert_public_target: chống SSRF qua phân giải DNS
+│   │   └── middleware.py       # X-Request-ID & Timing Middleware
 │   ├── db/                     # Lớp CSDL
 │   │   ├── session.py          # SQLAlchemy Engine, SessionLocal & get_db
 │   │   └── migrations/         # Alembic Migrations

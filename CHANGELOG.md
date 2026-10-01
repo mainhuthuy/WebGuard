@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Frontend (Sprint 3)**: design system, layout and UI primitives, Scan / Progress / Results /
   History / About pages, `useSSE` / `useScan` / `useReport` / `useHistory` hooks, Axios API services
   (`scanApi`, `reportApi`) with DTO mappers, client-side JSON/HTML export, ESLint config and a
-  Vitest + React Testing Library suite (109 tests)
+  Vitest + React Testing Library suite (112 tests)
 - Scan `mode` (`quick` = Headers + SSL/TLS, `full` = all modules) end to end: API, database column
   (Alembic migration `9c3e1f7a2b64`), history and report output
 - DNS-based SSRF protection: hostnames must resolve to public addresses only
@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/API_REFERENCE.md` corrected to match the implemented endpoints and payloads
 
 ### Fixed
+- Severity distribution bar on the results page filled only 50% of its width (the summary `total`
+  was counted twice)
+- Learning notes (`docs/learning`) reviewed against the code: corrected the SSRF validator example,
+  the 9-header count, scoring/grade claims, Jinja2 autoescape, SSE reconnect caveats, error-format
+  and logging descriptions; all Sprint 3 theory consolidated in `docs/learning/3.0_Sprint3_Frontend_Theory.md`
 - Existing SQLite databases created before the `mode` column are upgraded automatically on startup
 - Backend tests no longer write to the development `webguard.db` (isolated temporary database)
 - `SSE` stream no longer auto-reconnects (reconnecting would restart a running scan)
