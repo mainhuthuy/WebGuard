@@ -1,19 +1,37 @@
+# Explicit project name: without this, Compose derives it from the directory
+# (`docker/` for every file here), so this file and docker-compose.dev.yml would
+# share the same network/volume/image names and silently collide — e.g. running
+# `up` here without `--build` could reuse an image another compose file built
+# from a different target (confirmed by actually hitting this while testing).
+name: webguard
 services:
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      # ${BACKEND_PORT} comes from docker/.env (copy docker/.env.example there to
+      # override) — compose auto-loads a .env file from its own directory for
+      # exactly this kind of `${VAR}` substitution; no `env_file:` needed.
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
       - WEBGUARD_ENV=production
       - WEBGUARD_DEBUG=false
-      - WEBGUARD_DB_URL=sqlite:///./webguard.db
+      # Must live under /app/data — that's the directory the backend_data volume
+      # below actually persists. Anywhere else is wiped when the container is recreated.
+      - WEBGUARD_DB_URL=sqlite:////app/data/webguard.db
+      # Defaults to "*" (fine for local/trusted use) — a real deployment should set
+      # this in docker/.env to the exact origin(s) the frontend is actually served
+      # from, per the hardening note in docs/ARCHITECTURE.md section 4.
+      - WEBGUARD_CORS_ORIGINS=${WEBGUARD_CORS_ORIGINS:-*}
     volumes:
       - backend_data:/app/data
     restart: unless-stopped
+    # The image has no curl (see backend/Dockerfile) — this just reuses its own
+    # HEALTHCHECK instruction, declared here too so `docker compose ps` shows status
+    # without needing `docker inspect`.
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "python", "-c", "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://localhost:8000/api/v1/health', timeout=3).status == 200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -22,8 +40,13 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      # Without this, Docker builds the LAST stage in the Dockerfile by default — which is
+      # `dev` (the Vite dev server), not the nginx production build. Without `target:
+      # production` here, this service would start `npm run dev` instead of nginx, and
+      # nothing would be listening on the port mapped below.
+      target: production
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:8080"
     depends_on:
       backend:
         condition: service_healthy
