@@ -1,9 +1,8 @@
 """API route for health check and service status."""
 
-from datetime import datetime, timezone
 import logging
 import platform
-
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request, status
@@ -15,7 +14,7 @@ logger = logging.getLogger("app.api.v1.health")
 router = APIRouter(tags=["Health"])
 
 # Ghi lại thời điểm server khởi động (module-level = chạy 1 lần khi import)
-_started_at = datetime.now(timezone.utc)
+_started_at = datetime.now(UTC)
 
 
 @router.get(
@@ -28,7 +27,7 @@ _started_at = datetime.now(timezone.utc)
 async def health_check(request: Request) -> dict[str, Any]:
     """Health check endpoint cung cấp metadata và thống kê hệ thống."""
     settings = request.app.state.settings
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     uptime_seconds = (now - _started_at).total_seconds()
 
     return {

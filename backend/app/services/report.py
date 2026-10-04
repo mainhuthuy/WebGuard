@@ -8,8 +8,8 @@ Nhiệm vụ:
 - Đóng gói dữ liệu xuất báo cáo dưới định dạng JSON
 """
 
-from datetime import datetime, timezone
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +17,6 @@ from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session
 
 from app.core.errors import ScanNotFoundException
-from app.models.finding import FindingModel
 from app.models.scan import ScanModel
 from app.services.scan import scan_service
 
@@ -125,7 +124,7 @@ class ReportService:
                 (completed_at - created_at).total_seconds(), 2
             )
 
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
 
         return {
             "scan_id": scan_id,

@@ -1,11 +1,10 @@
 """Unit tests for ScanService lifecycle management."""
 
 import asyncio
+import contextlib
 from collections.abc import AsyncGenerator, Generator
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime, timedelta
 from typing import Any
-import uuid
 
 import pytest
 from sqlalchemy import create_engine
@@ -185,10 +184,8 @@ async def test_cancel_scan_pending_and_running(
 
     success = scan_service.cancel_scan(db=db_session, scan_id=scan.id)
     assert success is True
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
     assert task.cancelled()
 
 
@@ -370,6 +367,14 @@ def test_list_scans(scan_service: ScanService, db_session: Session) -> None:
     scan1 = scan_service.create_scan(db=db_session, target_url="https://site1.com")
     scan2 = scan_service.create_scan(db=db_session, target_url="https://site2.com")
     scan3 = scan_service.create_scan(db=db_session, target_url="https://site3.com")
+
+    # Windows's wall-clock resolution (~15ms ticks) can make 3 rapid-fire datetime.now() calls
+    # return the SAME value, leaving `ORDER BY created_at DESC` ambiguous between them. Force
+    # distinct timestamps so this test asserts a specific order deterministically everywhere.
+    base = datetime.now(UTC)
+    for offset, scan in enumerate((scan1, scan2, scan3)):
+        scan.created_at = base + timedelta(seconds=offset)
+    db_session.commit()
 
     all_scans = scan_service.list_scans(db=db_session, skip=0, limit=10)
     assert len(all_scans) == 3

@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core import Settings
 from app.main import create_application

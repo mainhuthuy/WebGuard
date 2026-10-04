@@ -1,8 +1,8 @@
 """Unit tests for HistoryService."""
 
-from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
 import uuid
+from collections.abc import Generator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine
@@ -62,7 +62,7 @@ def test_get_history_pagination(
     history_service: HistoryService, db_session: Session
 ) -> None:
     """Kiểm tra phân trang chính xác khi có nhiều bản ghi."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for i in range(15):
         scan = ScanModel(
             id=str(uuid.uuid4()),
@@ -95,7 +95,7 @@ def test_get_history_filters(
     history_service: HistoryService, db_session: Session
 ) -> None:
     """Kiểm tra các bộ lọc search_url, status, grade và khoảng thời gian."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     scan1 = ScanModel(
         id=str(uuid.uuid4()),
@@ -161,7 +161,7 @@ def test_get_history_sorting(
         status="completed",
         score=50,
         grade="D",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     scan2 = ScanModel(
         id=str(uuid.uuid4()),
@@ -169,7 +169,7 @@ def test_get_history_sorting(
         status="completed",
         score=99,
         grade="A+",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add_all([scan1, scan2])
     db_session.commit()
@@ -199,7 +199,7 @@ def test_get_stats(
         status="completed",
         score=90,
         grade="A",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     scan2 = ScanModel(
         id=str(uuid.uuid4()),
@@ -207,19 +207,19 @@ def test_get_stats(
         status="completed",
         score=70,
         grade="C",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     scan3 = ScanModel(
         id=str(uuid.uuid4()),
         target_url="https://site3.com",
         status="failed",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     scan4 = ScanModel(
         id=str(uuid.uuid4()),
         target_url="https://site4.com",
         status="cancelled",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add_all([scan1, scan2, scan3, scan4])
     db_session.commit()
@@ -244,7 +244,7 @@ def test_delete_history_item(
         id=scan_id,
         target_url="https://delete-me.com",
         status="completed",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     finding = FindingModel(
         scan_id=scan_id,
@@ -276,7 +276,7 @@ def test_clear_history_all_and_older_than(
     history_service: HistoryService, db_session: Session
 ) -> None:
     """Kiểm tra xóa toàn bộ hoặc xóa các bản ghi cũ hơn N ngày."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     old_scan = ScanModel(
         id=str(uuid.uuid4()),
         target_url="https://old.com",

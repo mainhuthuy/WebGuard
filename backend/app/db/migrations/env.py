@@ -1,14 +1,14 @@
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
+# Import đầy đủ models để Base.metadata nhận diện các bảng
+import app.models  # noqa: F401
 
 # Import config và Base metadata của ứng dụng
 from app.core import get_settings
 from app.db.session import Base
-# Import đầy đủ models để Base.metadata nhận diện các bảng
-import app.models  # noqa: F401
 
 config = context.config
 

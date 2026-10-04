@@ -2,6 +2,7 @@
 
 import json
 import logging
+
 from app.core.logging import ColoredConsoleFormatter, JSONFormatter, setup_logging
 
 

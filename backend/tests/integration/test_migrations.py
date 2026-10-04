@@ -2,12 +2,10 @@
 
 from pathlib import Path
 
+import pytest
 from alembic import command
 from alembic.config import Config
-import pytest
 from sqlalchemy import create_engine, inspect
-
-from app.core import get_settings
 
 
 @pytest.fixture

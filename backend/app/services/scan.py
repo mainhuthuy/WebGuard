@@ -10,12 +10,11 @@ Cung cấp các nghiệp vụ:
 """
 
 import asyncio
-from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
-import json
 import logging
-from typing import Any
 import uuid
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -43,7 +42,7 @@ class ScanService:
     def create_scan(self, db: Session, target_url: str, mode: str = "full") -> ScanModel:
         """Khởi tạo một bản ghi quét mới với trạng thái pending và lưu vào database."""
         scan_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         scan_record = ScanModel(
             id=scan_id,
@@ -101,7 +100,7 @@ class ScanService:
             db.refresh(scan)
             logger.info(f"ScanService: Bắt đầu thực thi quét {scan_id} ({scan.target_url})")
 
-            # Gọi Scanner Orchestrator chạy song song 5 module
+            # Gọi Scanner Orchestrator chạy song song các module
             scanner = Scanner(mode=scan.mode)
             scan_result = await scanner.scan(url=scan.target_url)
 
@@ -186,7 +185,7 @@ class ScanService:
             scan.score = score_val
             scan.grade = grade_val
             scan.status = ScanStatus.COMPLETED.value
-            scan.completed_at = datetime.now(timezone.utc)
+            scan.completed_at = datetime.now(UTC)
 
             db.commit()
             db.refresh(scan)
@@ -202,7 +201,7 @@ class ScanService:
             scan = self.get_scan(db, scan_id)
             if scan and scan.status != ScanStatus.CANCELLED.value:
                 scan.status = ScanStatus.CANCELLED.value
-                scan.completed_at = datetime.now(timezone.utc)
+                scan.completed_at = datetime.now(UTC)
                 db.commit()
             raise
 
@@ -211,7 +210,7 @@ class ScanService:
             scan = self.get_scan(db, scan_id)
             if scan:
                 scan.status = ScanStatus.FAILED.value
-                scan.completed_at = datetime.now(timezone.utc)
+                scan.completed_at = datetime.now(UTC)
                 db.commit()
             raise
 
@@ -263,7 +262,7 @@ class ScanService:
 
         # 2. Cập nhật trạng thái trong database
         scan.status = ScanStatus.CANCELLED.value
-        scan.completed_at = datetime.now(timezone.utc)
+        scan.completed_at = datetime.now(UTC)
         db.commit()
         db.refresh(scan)
         logger.info(f"ScanService: Đã đánh dấu phiên quét {scan_id} là CANCELLED")
@@ -344,7 +343,7 @@ class ScanService:
                     scan.score = scoring.get("score")
                     scan.grade = scoring.get("grade")
                     scan.status = ScanStatus.COMPLETED.value
-                    scan.completed_at = datetime.now(timezone.utc)
+                    scan.completed_at = datetime.now(UTC)
                     db.commit()
                     db.refresh(scan)
 
@@ -353,14 +352,14 @@ class ScanService:
         except asyncio.CancelledError:
             logger.warning(f"ScanService: Luồng stream của {scan_id} bị hủy")
             scan.status = ScanStatus.CANCELLED.value
-            scan.completed_at = datetime.now(timezone.utc)
+            scan.completed_at = datetime.now(UTC)
             db.commit()
             raise
 
         except Exception as exc:
             logger.exception(f"ScanService: Lỗi sự cố khi stream scan_id={scan_id}: {exc}")
             scan.status = ScanStatus.FAILED.value
-            scan.completed_at = datetime.now(timezone.utc)
+            scan.completed_at = datetime.now(UTC)
             db.commit()
 
             empty_findings: list[dict[str, Any]] = []

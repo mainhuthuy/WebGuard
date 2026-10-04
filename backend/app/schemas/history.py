@@ -1,7 +1,6 @@
 """Pydantic data schemas for scan history queries, pagination, and statistics."""
 
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, Field
 

@@ -1,8 +1,8 @@
 """Integration tests for FastAPI application core configuration."""
 
+import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
-import pytest
 
 from app.core import ScanNotFoundException, Settings
 from app.main import create_application

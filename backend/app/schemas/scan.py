@@ -1,8 +1,8 @@
 """Pydantic data schemas for scan requests, findings, and responses."""
 
-from datetime import datetime, timezone
-from enum import Enum
 import ipaddress
+from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
 
@@ -69,8 +69,9 @@ class ScanCreateRequest(BaseModel):
         if not hostname:
             raise ValueError("URL không hợp lệ, không tìm thấy hostname")
 
-        # 3. Chống SSRF: Chặn loopback / localhost
-        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0"):
+        # 3. Chống SSRF: Chặn loopback / localhost (so sánh chuỗi chặn danh sách đen, không
+        # phải bind địa chỉ server — ruff's bandit rule S104 hiểu nhầm "0.0.0.0" ở đây)
+        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0"):  # noqa: S104
             raise ValueError("Không được phép quét localhost hoặc địa chỉ loopback cục bộ")
 
         # 4. Chặn dải IP Private nội bộ (10.x, 192.168.x, 172.16-31.x)
@@ -94,7 +95,7 @@ class ScanCreateResponse(BaseModel):
     mode: ScanMode = Field(default=ScanMode.FULL, description="Chế độ quét đã chọn")
     status: ScanStatus = Field(default=ScanStatus.PENDING, description="Trạng thái hiện tại")
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="Thời gian khởi tạo phiên quét (UTC)",
     )
 

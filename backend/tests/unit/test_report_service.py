@@ -1,8 +1,8 @@
 """Unit tests for ReportService."""
 
-from collections.abc import Generator
-from datetime import datetime, timezone
 import uuid
+from collections.abc import Generator
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -50,8 +50,8 @@ def test_get_report_data_from_db(
 ) -> None:
     """Kiểm tra tổng hợp dữ liệu báo cáo chuẩn xác từ bản ghi Database."""
     scan_id = str(uuid.uuid4())
-    start_time = datetime(2026, 1, 1, 10, 0, 0, tzinfo=timezone.utc)
-    end_time = datetime(2026, 1, 1, 10, 0, 5, tzinfo=timezone.utc)
+    start_time = datetime(2026, 1, 1, 10, 0, 0, tzinfo=UTC)
+    end_time = datetime(2026, 1, 1, 10, 0, 5, tzinfo=UTC)
 
     scan = ScanModel(
         id=scan_id,
@@ -110,7 +110,7 @@ def test_get_report_data_fallback_in_memory(
         "scan_id": scan_id,
         "target_url": "https://fallback.com",
         "status": ScanStatus.PENDING,
-        "created_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
         "findings": [],
         "scoring": {},
     }
@@ -142,7 +142,7 @@ def test_generate_json_report(
         id=scan_id,
         target_url="https://example.com",
         status=ScanStatus.PENDING.value,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     db_session.add(scan)
     db_session.commit()
@@ -162,8 +162,8 @@ def test_generate_html_report_with_findings(
         id=scan_id,
         target_url="https://html-test.com",
         status=ScanStatus.COMPLETED.value,
-        created_at=datetime.now(timezone.utc),
-        completed_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
         score=70,
         grade="C",
     )
@@ -201,8 +201,8 @@ def test_generate_html_report_no_findings(
         id=scan_id,
         target_url="https://clean-site.com",
         status=ScanStatus.COMPLETED.value,
-        created_at=datetime.now(timezone.utc),
-        completed_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        completed_at=datetime.now(UTC),
         score=100,
         grade="A+",
     )

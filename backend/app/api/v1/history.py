@@ -1,10 +1,9 @@
 """API routes for scan history management operations."""
 
-from datetime import datetime
 import logging
-from typing import Any
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.errors import ScanNotFoundException

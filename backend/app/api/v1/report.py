@@ -1,7 +1,7 @@
 """API routes for scan report export operations."""
 
-from enum import Enum
 import logging
+from enum import Enum
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse, JSONResponse

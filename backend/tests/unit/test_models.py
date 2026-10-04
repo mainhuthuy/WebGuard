@@ -1,6 +1,6 @@
-from collections.abc import Generator
-from datetime import datetime, timezone
 import uuid
+from collections.abc import Generator
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -64,7 +64,7 @@ def test_scan_with_findings_relationship(db_session: Session) -> None:
         status="completed",
         score=85,
         grade="B",
-        completed_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(UTC),
     )
 
     finding1 = FindingModel(

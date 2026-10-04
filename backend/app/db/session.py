@@ -1,7 +1,7 @@
 """Database session and engine configuration using SQLAlchemy."""
 
-from collections.abc import Generator
 import logging
+from collections.abc import Generator
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker

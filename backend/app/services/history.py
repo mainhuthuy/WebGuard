@@ -1,16 +1,13 @@
 """HistoryService — Quản lý truy vấn, lọc, phân trang và thống kê lịch sử quét an ninh."""
 
-from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import desc, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.finding import FindingModel
 from app.models.scan import ScanModel
 from app.schemas.history import (
-    HistoryDeleteResponse,
     ScanHistoryItem,
     ScanHistoryResponse,
     ScanHistoryStats,
@@ -207,7 +204,7 @@ class HistoryService:
         """Dọn dẹp lịch sử quét. Nếu truyền older_than_days thì chỉ xóa các bản ghi cũ hơn."""
         query = db.query(ScanModel)
         if older_than_days is not None and older_than_days > 0:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(
+            cutoff_date = datetime.now(UTC) - timedelta(
                 days=older_than_days
             )
             query = query.filter(ScanModel.created_at < cutoff_date)
