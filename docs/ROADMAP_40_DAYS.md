@@ -152,3 +152,18 @@ Ngày 36-40 │ Sprint 5 │ ░░░░░░░░░░░░░░░░░
 | 5.12 | Chuẩn bị nội dung CV | Soạn bullet points chuẩn cho mục Dự án trong CV xin việc | 0.5h |
 
 **DoD:** Dự án có link Live Demo trực tiếp, GitHub repo có badge, ảnh demo, tài liệu chuyên nghiệp, sẵn sàng gửi cho nhà tuyển dụng!
+
+---
+
+## 📌 Bổ sung sau kế hoạch gốc (ngoài 40 ngày)
+
+Kế hoạch trên chốt ở **5 module quét**. Sau khi hoàn thành, phạm vi quét được mở rộng đáng kể dựa trên nhu cầu thực tế, không nằm trong lịch 40 ngày ban đầu:
+
+| Hạng mục | Trước | Sau | Tài liệu |
+|---|---|---|---|
+| Số module quét (`full`) | 5 | **7** (+ `ContentModule`, `HttpConfigModule`) | `1.11`, `1.12` |
+| Tổng số kiểm tra | 25 | **~102** (header giá trị yếu, cookie nâng cao, phân loại lỗi chứng chỉ, 33 đường dẫn nhạy cảm mới, CORS nâng cao, phân tích HTML, hành vi HTTP) | `1.2`–`1.6`, `1.8`, `1.11`, `1.12` |
+| Kiểm tra chủ động (rủi ro thấp, có giới hạn phạm vi rõ ràng) | 0 | 2 (`username_enumeration`, `open_redirect`) | `1.11`, `1.12` |
+| Tích hợp AI | Không có | "Explain with AI" (BYOK — người dùng tự mang API key, AI chỉ diễn giải dữ liệu đã quét) | `3.14` |
+
+**Nguyên tắc giữ xuyên suốt khi mở rộng:** mọi kiểm tra mới đều được cân nhắc giữa *giá trị phát hiện* và *rủi ro trở thành công cụ tấn công trên target không xác minh chủ sở hữu* — đây là lý do WebGuard **không** có các kiểm tra kiểu XSS/SQLi injection thật hay brute-force, dù về mặt kỹ thuật không khó thêm.
