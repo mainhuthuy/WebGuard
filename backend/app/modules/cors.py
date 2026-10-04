@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import httpx
 
 from app.modules.base import HTTP_TIMEOUT, BaseModule
@@ -10,11 +12,11 @@ class CorsModule(BaseModule):
     @property
     def name(self) -> str:
         return "CORS"
-    
+
     @property
     def description(self) -> str:
         return "Kiểm tra cấu hình sai CORS"
-    
+
     async def scan(self, url: str, **kwargs) -> list:
         findings = []
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -58,4 +60,31 @@ class CorsModule(BaseModule):
                     "remediation": "Tắt Access-Control-Allow-Credentials hoặc giới hạn origin cụ thể",
                     "url": url
                 })
+            # Check 4: Origin "null" (iframe sandbox / file:// / redirect có thể giả mạo origin này)
+            response = await client.get(url, headers={"Origin": "null"})
+            if response.headers.get("access-control-allow-origin") == "null":
+                findings.append({
+                    "module": self.name,
+                    "name": "cors_null_origin",
+                    "severity": "high",
+                    "description": "Server chấp nhận Origin: null — trang web độc hại có thể giả mạo origin này bằng iframe sandbox",
+                    "remediation": "Không đưa 'null' vào whitelist origin",
+                    "url": url
+                })
+            # Check 5: Kiểm tra origin yếu (regex/startswith/endswith sai) — chỉ dò khi
+            # server CHƯA phản hồi mọi origin (nếu đã phản hồi mọi origin thì đã báo ở Check 2)
+            host = urlparse(url).hostname
+            if host and not reflected:
+                for forged in (f"https://{host}.evil.com", f"https://evil{host}"):
+                    response = await client.get(url, headers={"Origin": forged})
+                    if response.headers.get("access-control-allow-origin") == forged:
+                        findings.append({
+                            "module": self.name,
+                            "name": "cors_weak_origin_validation",
+                            "severity": "high",
+                            "description": f"Server tin origin giả mạo {forged} — kiểm tra whitelist chỉ so khớp một phần tên miền",
+                            "remediation": "So khớp chính xác toàn bộ origin (scheme + host + port) với danh sách cho phép",
+                            "url": url
+                        })
+                        break
         return findings

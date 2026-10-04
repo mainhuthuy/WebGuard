@@ -16,7 +16,17 @@ export type ScanMode = 'quick' | 'full'
 export type ScanStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 /** Individual module names */
-export type ModuleName = 'headers' | 'cookies' | 'ssl_tls' | 'information' | 'cors'
+export type ModuleName = 'headers' | 'cookies' | 'ssl_tls' | 'information' | 'cors' | 'content' | 'http_config'
+
+/** AI providers supported by the BYOK "Explain with AI" feature (backend/app/schemas/ai.py) */
+export type AIProvider = 'google' | 'groq' | 'openrouter' | 'openai' | 'anthropic'
+
+/** Settings persisted client-side only (see utils/aiSettings.ts) — never sent anywhere but our own backend */
+export interface AISettings {
+  provider: AIProvider
+  apiKey: string
+  model?: string
+}
 
 /** Request to initiate a scan */
 export interface ScanRequest {

@@ -4,8 +4,8 @@ Nếu thêm/đổi/xóa một kiểm tra hoặc mức độ rủi ro trong `app/
 `frontend/src/pages/aboutChecks.ts`.
 """
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 import pytest
 
@@ -19,15 +19,46 @@ CATALOG = Path(__file__).resolve().parents[3] / "frontend" / "src" / "pages" / "
 SSL_TLS_CHECKS = {
     "ssl_connection_failed": "critical",
     "cert_expired": "critical",
+    "cert_hostname_mismatch": "critical",
+    "cert_self_signed": "critical",
+    "cert_untrusted_chain": "critical",
     "outdated_tls_version": "high",
+    "weak_cipher_suite": "high",
     "cert_expiring_soon": "medium",
+    "tls13_unsupported": "low",
 }
 CORS_CHECKS = {
     "cors_origin_reflection": "critical",
     "cors_credentials_exposed": "critical",
     "cors_wildcard": "high",
+    "cors_null_origin": "high",
+    "cors_weak_origin_validation": "high",
 }
-INFORMATION_HEADER_CHECKS = {"Server header": "medium", "X-Powered-By header": "medium"}
+INFORMATION_HEADER_CHECKS = {
+    "Server header": "medium",
+    "X-Powered-By header": "medium",
+    "directory_listing": "medium",
+    "verbose_error_messages": "medium",
+    "internal_ip_disclosure": "low",
+}
+CONTENT_CHECKS = {
+    "password_form_http": "critical",
+    "mixed_content_active": "high",
+    "insecure_form_action": "high",
+    "missing_sri": "medium",
+    "outdated_js_library": "medium",
+    "mixed_content_passive": "low",
+    "form_without_csrf_token": "low",
+    "generator_version_disclosure": "low",
+    "username_enumeration": "low",
+}
+HTTP_CONFIG_CHECKS = {
+    "https_not_enforced": "high",
+    "open_redirect": "medium",
+    "http_trace_enabled": "medium",
+    "risky_http_methods": "medium",
+    "security_txt_missing": "low",
+}
 
 
 def _documented() -> dict[str, str]:
@@ -47,11 +78,16 @@ def documented() -> dict[str, str]:
 def _expected() -> dict[str, str]:
     expected: dict[str, str] = {}
     expected.update({h["name"]: h["severity"] for h in HeadersModule.SECURITY_HEADERS})
+    expected.update({h["name"]: h["severity"] for h in HeadersModule.HEADER_WEAKNESSES})
     expected.update({f["name"]: f["severity"] for f in CookiesModule.COOKIE_FLAGS})
+    expected.update({f["name"]: f["severity"] for f in CookiesModule.COOKIE_ISSUES})
     expected.update({p["path"]: p["severity"] for p in InformationModule.SENSITIVE_PATHS})
+    expected.update({h["name"]: h["severity"] for h in InformationModule.VERSION_HEADERS})
     expected.update(INFORMATION_HEADER_CHECKS)
     expected.update(SSL_TLS_CHECKS)
     expected.update(CORS_CHECKS)
+    expected.update(CONTENT_CHECKS)
+    expected.update(HTTP_CONFIG_CHECKS)
     return expected
 
 

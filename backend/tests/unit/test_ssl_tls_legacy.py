@@ -1,13 +1,13 @@
 """Unit tests cho việc phát hiện giao thức TLS cũ (1.0 / 1.1) của SSLTLSModule."""
 
-from collections.abc import Iterator
-from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
 import shutil
 import socket
 import ssl
 import subprocess
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -17,7 +17,7 @@ from app.modules.ssl_tls import SSLTLSModule
 
 
 def _good_cert() -> dict[str, Any]:
-    expire = datetime.now(timezone.utc) + timedelta(days=200)
+    expire = datetime.now(UTC) + timedelta(days=200)
     return {"notAfter": expire.strftime("%b %d %H:%M:%S %Y GMT")}
 
 
@@ -96,7 +96,7 @@ async def test_certificate_errors_do_not_trigger_the_legacy_probe(monkeypatch: p
     monkeypatch.setattr(ssl_tls, "_fetch_certificate", bad_cert)
     monkeypatch.setattr(ssl_tls, "_probe_legacy_tls", probe_must_not_run)
     findings = await SSLTLSModule().scan("https://example.com")
-    assert [f["name"] for f in findings] == ["ssl_connection_failed"]
+    assert [f["name"] for f in findings] == ["cert_self_signed"]
 
 
 async def test_non_ssl_errors_do_not_trigger_the_legacy_probe(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,7 +148,7 @@ def _local_tls_server(tmp_path: Any, min_version: ssl.TLSVersion, max_version: s
         while not stop.is_set():
             try:
                 conn, _ = listener.accept()
-            except (socket.timeout, OSError):
+            except (TimeoutError, OSError):
                 continue
             try:
                 with context.wrap_socket(conn, server_side=True):

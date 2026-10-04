@@ -1,7 +1,10 @@
 from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
+
 from app.modules.cors import CorsModule
+
 
 @pytest.mark.asyncio
 async def test_cors_wildcard():

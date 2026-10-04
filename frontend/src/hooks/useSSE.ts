@@ -70,6 +70,8 @@ const MODULE_LABELS: Record<ModuleName, string> = {
   ssl_tls: 'SSL/TLS Certificate',
   information: 'Information Disclosure',
   cors: 'CORS Configuration',
+  content: 'Page Content',
+  http_config: 'HTTP Configuration',
 }
 
 function delay(ms: number): Promise<void> {
@@ -87,7 +89,7 @@ function createMockSSEStream(
   const modules: ModuleName[] =
     mode === 'quick'
       ? ['headers', 'ssl_tls']
-      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors']
+      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors', 'content', 'http_config']
 
   // Randomised findings per module
   const moduleFindingsCounts: Record<ModuleName, number> = {
@@ -96,6 +98,8 @@ function createMockSSEStream(
     ssl_tls: Math.floor(Math.random() * 2),
     information: Math.floor(Math.random() * 3) + 1,
     cors: Math.floor(Math.random() * 2),
+    content: Math.floor(Math.random() * 2),
+    http_config: Math.floor(Math.random() * 2),
   }
 
   async function run() {

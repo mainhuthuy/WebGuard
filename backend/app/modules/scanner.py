@@ -1,11 +1,13 @@
 import asyncio
-from collections.abc import AsyncGenerator
 import logging
+from collections.abc import AsyncGenerator
 from typing import Any
 
+from app.modules.content import ContentModule
 from app.modules.cookies import CookiesModule
 from app.modules.cors import CorsModule
 from app.modules.headers import HeadersModule
+from app.modules.http_config import HttpConfigModule
 from app.modules.information import InformationModule
 from app.modules.scoring import ScoringEngine
 from app.modules.ssl_tls import SSLTLSModule
@@ -26,6 +28,8 @@ class Scanner:
                 SSLTLSModule(),
                 InformationModule(),
                 CorsModule(),
+                ContentModule(),
+                HttpConfigModule(),
             ]
         self.scoring = ScoringEngine()
 

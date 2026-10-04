@@ -15,7 +15,7 @@ import type {
 } from '../types'
 
 const GRADES: Grade[] = ['A+', 'A', 'B', 'C', 'F']
-const MODULES: ModuleName[] = ['headers', 'cookies', 'ssl_tls', 'information', 'cors']
+const MODULES: ModuleName[] = ['headers', 'cookies', 'ssl_tls', 'information', 'cors', 'content', 'http_config']
 
 /** Backend datetimes are naive UTC (no offset); make them explicit so Date parses them as UTC */
 export function toUtcIso(value: string): string

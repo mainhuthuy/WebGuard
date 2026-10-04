@@ -1,5 +1,6 @@
 from app.modules.scoring import ScoringEngine
 
+
 def test_scoring_perfect():
     """Trang web không có lỗi nào phải đạt điểm 100 và Grade A+."""
     engine = ScoringEngine()

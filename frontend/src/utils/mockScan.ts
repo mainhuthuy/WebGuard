@@ -185,6 +185,30 @@ const MOCK_FINDINGS_POOL: Record<ModuleName, MockFinding[]> = {
         'Request Origin: https://evil.com → Response ACAO: https://evil.com',
     },
   ],
+  content: [
+    {
+      module: 'content',
+      severity: 'medium',
+      title: 'missing_sri',
+      description:
+        'Third-party scripts are loaded without a Subresource Integrity hash. If the CDN is compromised, malicious code runs on your page.',
+      remediation: 'Add integrity="sha384-..." and crossorigin="anonymous" to third-party scripts.',
+      snippet:
+        '<script src="https://cdn.example.com/lib.js" integrity="sha384-..." crossorigin="anonymous"></script>',
+      evidence: '<script src="https://cdn.example.com/lib.js">',
+    },
+  ],
+  http_config: [
+    {
+      module: 'http_config',
+      severity: 'high',
+      title: 'https_not_enforced',
+      description:
+        'The site serves plain HTTP without redirecting to HTTPS, so visitors can be intercepted or downgraded.',
+      remediation: 'Redirect all HTTP traffic to HTTPS with a 301 and enable HSTS.',
+      evidence: 'GET http://example.com/ → 200 OK',
+    },
+  ],
 }
 
 /** Pick N random findings from a module pool */
@@ -253,7 +277,7 @@ export function buildMockResultFromHistory(item: ScanHistoryItem): ScanResult {
   const ids: ModuleName[] =
     item.mode === 'quick'
       ? ['headers', 'ssl_tls']
-      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors']
+      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors', 'content', 'http_config']
 
   // Spread the recorded findings count over the modules, bounded by each pool's size
   let remaining = item.findings_count

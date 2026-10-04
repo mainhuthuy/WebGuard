@@ -1,6 +1,6 @@
 """Unit tests cho SSLTLSModule (không mở kết nối mạng thật)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -16,7 +16,7 @@ def _no_real_legacy_probe(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _cert_expiring_in(days: int) -> dict[str, Any]:
-    expire = datetime.now(timezone.utc) + timedelta(days=days)
+    expire = datetime.now(UTC) + timedelta(days=days)
     return {"notAfter": expire.strftime("%b %d %H:%M:%S %Y GMT")}
 
 
@@ -37,7 +37,7 @@ async def test_expired_certificate_is_critical(monkeypatch: pytest.MonkeyPatch) 
 
 
 async def test_expiring_soon_is_medium(monkeypatch: pytest.MonkeyPatch) -> None:
-    _patch_fetch(monkeypatch, _cert_expiring_in(10), "TLSv1.2")
+    _patch_fetch(monkeypatch, _cert_expiring_in(10), "TLSv1.3")
     findings = await SSLTLSModule().scan("https://example.com")
     assert [f["name"] for f in findings] == ["cert_expiring_soon"]
 

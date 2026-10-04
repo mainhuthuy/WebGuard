@@ -39,7 +39,7 @@ async def test_unrelated_attribute_value_containing_a_flag_word_is_ignored() -> 
 
 
 async def test_flag_matching_ignores_case_and_attribute_values() -> None:
-    assert await _missing("a=1; SECURE; httponly; SameSite=None") == []
+    assert await _missing("a=1; SECURE; httponly; samesite=LAX") == []
 
 
 async def test_cookie_name_is_reported_without_its_value() -> None:

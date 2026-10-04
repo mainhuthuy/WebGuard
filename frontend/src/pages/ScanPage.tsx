@@ -19,12 +19,14 @@ const ALL_MODULES: { id: ModuleName; label: string }[] = [
   { id: 'ssl_tls', label: 'SSL/TLS' },
   { id: 'information', label: 'Info Disclosure' },
   { id: 'cors', label: 'CORS Config' },
+  { id: 'content', label: 'Page Content' },
+  { id: 'http_config', label: 'HTTP Config' },
 ]
 
 /** Which modules each mode runs */
 const MODE_MODULES: Record<ScanMode, ModuleName[]> = {
   quick: ['headers', 'ssl_tls'],
-  full: ['headers', 'cookies', 'ssl_tls', 'information', 'cors'],
+  full: ['headers', 'cookies', 'ssl_tls', 'information', 'cors', 'content', 'http_config'],
 }
 
 /** Basic URL validation */
@@ -151,7 +153,7 @@ export default function ScanPage({ onStartScan, scanning = false }: ScanPageProp
               <ShieldCheck className="scan-mode__icon" />
               <div className="scan-mode__label">
                 <span className="scan-mode__name">Full Audit</span>
-                <span className="scan-mode__desc">All 5 modules</span>
+                <span className="scan-mode__desc">All 7 modules</span>
               </div>
             </button>
           </div>

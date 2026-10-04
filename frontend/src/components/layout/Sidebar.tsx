@@ -5,6 +5,7 @@ import {
   History,
   FileText,
   Info,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
   Lock,
@@ -54,6 +55,7 @@ const defaultSections: NavSection[] = [
   {
     label: 'Info',
     items: [
+      { id: 'settings', label: 'AI Settings', icon: <Sparkles size={20} />, href: '/settings' },
       { id: 'about', label: 'About & Disclaimer', icon: <Info size={20} />, href: '/about' },
     ],
   },

@@ -49,6 +49,8 @@ const MODULE_META: { id: ModuleName; label: string }[] = [
   { id: 'ssl_tls', label: 'SSL / TLS Certificate' },
   { id: 'information', label: 'Information Disclosure' },
   { id: 'cors', label: 'CORS Configuration' },
+  { id: 'content', label: 'Page Content' },
+  { id: 'http_config', label: 'HTTP Configuration' },
 ]
 
 /** Mark every in-flight module as failed so the progress list reflects the error */
@@ -61,7 +63,7 @@ export function buildModuleSteps(mode: ScanMode): ModuleStep[] {
   const activeIds: ModuleName[] =
     mode === 'quick'
       ? ['headers', 'ssl_tls']
-      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors']
+      : ['headers', 'cookies', 'ssl_tls', 'information', 'cors', 'content', 'http_config']
 
   return MODULE_META.filter((m) => activeIds.includes(m.id)).map((m) => ({
     id: m.id,

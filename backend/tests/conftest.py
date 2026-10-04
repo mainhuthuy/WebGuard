@@ -1,13 +1,14 @@
 import os
 import tempfile
 
-# Cô lập database: mọi test dùng file SQLite tạm, không đụng tới webguard.db của môi trường dev.
-# Phải đặt trước khi import `app` vì engine được tạo ngay khi import app.db.session.
-_TEST_DB_DIR = tempfile.mkdtemp(prefix="webguard_tests_")
-os.environ["WEBGUARD_DB_URL"] = f"sqlite:///{_TEST_DB_DIR}/test.db"
-
 import httpx
 import pytest
+
+# Cô lập database: mọi test dùng file SQLite tạm, không đụng tới webguard.db của môi trường dev.
+# Phải đặt TRƯỚC khi import bất kỳ module `app.*` nào (vd `app.db.session`), vì engine được tạo
+# ngay khi module đó được import. httpx/pytest ở trên an toàn vì không kéo theo `app.*`.
+_TEST_DB_DIR = tempfile.mkdtemp(prefix="webguard_tests_")
+os.environ["WEBGUARD_DB_URL"] = f"sqlite:///{_TEST_DB_DIR}/test.db"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -32,6 +33,14 @@ def _fake_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(security, "_resolve", fake_resolve)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_weak_cipher_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Không dò bộ mã hóa yếu qua mạng thật; test cần thì tự thay `_probe_weak_ciphers`."""
+    from app.modules import ssl_tls
+
+    monkeypatch.setattr(ssl_tls, "_probe_weak_ciphers", lambda host, port: [])
+
+
 @pytest.fixture
 def mock_insecure_headers_response():
     """Giả lập Response từ một website KHÔNG cấu hình bất kỳ header bảo mật nào."""
@@ -43,7 +52,7 @@ def mock_insecure_headers_response():
 
 @pytest.fixture
 def mock_secure_headers_response():
-    """Giả lập Response từ một website cấu hình ĐẦY ĐỦ 9 header bảo mật."""
+    """Giả lập Response từ một website cấu hình ĐẦY ĐỦ 10 header bảo mật."""
     headers = {
         "Content-Security-Policy": "default-src 'self'",
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
@@ -54,6 +63,7 @@ def mock_secure_headers_response():
         "Permissions-Policy": "geolocation=()",
         "Cross-Origin-Opener-Policy": "same-origin",
         "Cross-Origin-Embedder-Policy": "require-corp",
+        "Cross-Origin-Resource-Policy": "same-origin",
     }
     return httpx.Response(
         status_code=200,

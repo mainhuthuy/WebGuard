@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   AlertTriangle,
   Ban,
+  Server,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Badge, Button, Card } from '../components/common'
@@ -27,6 +28,8 @@ const MODULE_ICONS: Record<ModuleName, ReactNode> = {
   ssl_tls: <KeyRound size={20} />,
   information: <Search size={20} />,
   cors: <Globe2 size={20} />,
+  content: <FileText size={20} />,
+  http_config: <Server size={20} />,
 }
 
 const STEPS: { title: string; description: string }[] = [
