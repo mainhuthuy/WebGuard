@@ -1,9 +1,9 @@
 """API routes for security scanning operations."""
 
-from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
 import json
 import logging
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,6 +13,7 @@ from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 from app.core.errors import ScanNotFoundException
 from app.core.security import assert_public_target
 from app.db.session import get_db
+from app.schemas.ai import AIExplainRequest, AIExplainResponse
 from app.schemas.scan import (
     Finding,
     ScanCancelResponse,
@@ -24,6 +25,7 @@ from app.schemas.scan import (
     ScanStatus,
     ScoringResult,
 )
+from app.services import ai_explainer
 from app.services.scan import scan_service
 
 logger = logging.getLogger("app.api.v1.scan")
@@ -101,10 +103,10 @@ async def stream_scan_progress(
                         event_data = step_event.get("data")
                         if isinstance(event_data, dict) and "scoring" in event_data:
                             job["scoring"] = event_data["scoring"]
-                        job["completed_at"] = datetime.now(timezone.utc)
+                        job["completed_at"] = datetime.now(UTC)
                     elif step_event["event"] == ScanEventType.ERROR.value:
                         job["status"] = ScanStatus.FAILED
-                        job["completed_at"] = datetime.now(timezone.utc)
+                        job["completed_at"] = datetime.now(UTC)
 
                 yield ServerSentEvent(
                     event=step_event["event"],
@@ -241,3 +243,42 @@ async def cancel_scan(
         status=ScanStatus.CANCELLED,
         message=f"Đã hủy thành công phiên quét {scan_id}",
     )
+
+
+@router.post(
+    "/{scan_id}/explain",
+    response_model=AIExplainResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Giải thích kết quả quét và đề xuất khắc phục bằng AI (BYOK)",
+    description=(
+        "Gửi các phát hiện ĐÃ CÓ của phiên quét tới nhà cung cấp AI do người dùng chọn, dùng "
+        "API key của chính người dùng (BYOK). Không gửi thêm bất kỳ request mới nào tới target; "
+        "API key chỉ dùng cho đúng 1 lần gọi này và không được lưu lại ở phía server."
+    ),
+)
+async def explain_scan(
+    scan_id: str,
+    payload: AIExplainRequest,
+    db: Session = Depends(get_db),
+) -> AIExplainResponse:
+    """Nhờ AI (key của người dùng) diễn giải findings đã quét và đề xuất khắc phục chi tiết."""
+    scan = scan_service.get_scan(db, scan_id)
+    if not scan:
+        raise ScanNotFoundException(scan_id=scan_id)
+    if scan.status != ScanStatus.COMPLETED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Phiên quét {scan_id} chưa hoàn tất, chưa có dữ liệu để AI giải thích.",
+        )
+
+    try:
+        explanation, used_model = await ai_explainer.explain_scan(
+            provider=payload.provider.value,
+            api_key=payload.api_key,
+            model=payload.model,
+            scan=scan,
+        )
+    except ai_explainer.AIProviderError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+
+    return AIExplainResponse(provider=payload.provider, model=used_model, explanation=explanation)

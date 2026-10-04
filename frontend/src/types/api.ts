@@ -2,7 +2,7 @@
    Backend DTOs — mirrors backend/app/schemas/*.py (snake_case, raw)
    ============================================================ */
 
-import type { ScanMode, ScanStatus } from './scan'
+import type { AIProvider, ScanMode, ScanStatus } from './scan'
 
 export interface ApiFinding {
   module: string
@@ -81,6 +81,19 @@ export interface ApiDeleteResponse {
   deleted: boolean
   message: string
   deleted_count: number
+}
+
+/** POST /scan/{id}/explain — request body (api_key is the user's own, forwarded once, never stored) */
+export interface ApiExplainRequest {
+  provider: AIProvider
+  api_key: string
+  model?: string
+}
+
+export interface ApiExplainResponse {
+  provider: AIProvider
+  model: string
+  explanation: string
 }
 
 /** Query params of GET /history */

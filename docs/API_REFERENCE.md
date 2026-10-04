@@ -78,7 +78,7 @@ Quản lý vòng đời khởi tạo, giám sát và hủy bỏ các phiên qué
 }
 ```
   - `url` (bắt buộc): URL `http://` hoặc `https://` công khai.
-  - `mode` (tùy chọn, mặc định `full`): `quick` chỉ chạy **Headers + SSL/TLS**; `full` chạy cả 5 module.
+  - `mode` (tùy chọn, mặc định `full`): `quick` chỉ chạy **Headers + SSL/TLS**; `full` chạy cả 7 module (headers, cookies, ssl_tls, information, cors, content, http_config).
 - **Response:** `201 Created`
 ```json
 {
@@ -159,6 +159,41 @@ data: {"event": "complete", "progress": 100, "findings": [ ... tất cả findin
 - **Error Cases:**
   - `400 Bad Request` (`HTTP_400`): Khi phiên quét đã ở trạng thái kết thúc (`completed`, `failed`, `cancelled`).
   - `404 Not Found` (`SCAN_NOT_FOUND`).
+
+### 3.5. Giải thích kết quả bằng AI (BYOK — Bring Your Own Key)
+- **Endpoint:** `POST /api/v1/scan/{scan_id}/explain`
+- **Mô tả:** Gửi các findings **đã có sẵn** của phiên quét tới một nhà cung cấp AI do người dùng
+  tự chọn, dùng **API key của chính người dùng**, để nhận giải thích dễ hiểu + kế hoạch khắc phục
+  chi tiết. Đây là bước đọc-và-diễn-giải thuần tuý: không có request mới nào được gửi tới target.
+  Server **không lưu** `api_key` dưới bất kỳ hình thức nào — chỉ dùng cho đúng 1 lần gọi provider
+  rồi bỏ đi khi request kết thúc.
+- **Request Body:**
+```json
+{
+  "provider": "google",
+  "api_key": "<API key của chính người dùng>",
+  "model": "gemini-2.0-flash"
+}
+```
+  - `provider` (bắt buộc): `google` | `groq` | `openrouter` | `openai` | `anthropic`.
+  - `api_key` (bắt buộc, tối thiểu 8 ký tự): key của người dùng, lấy từ tài khoản (có thể là free
+    tier) của chính họ ở nhà cung cấp đã chọn.
+  - `model` (tùy chọn): bỏ trống sẽ dùng model mặc định của provider (xem `app/services/ai_explainer.py`).
+- **Response:** `200 OK`
+```json
+{
+  "provider": "google",
+  "model": "gemini-2.0-flash",
+  "explanation": "## Overall risk\n...\n## Priority plan\n1. ..."
+}
+```
+- **Error Cases:**
+  - `404 Not Found` (`SCAN_NOT_FOUND`).
+  - `400 Bad Request`: phiên quét chưa ở trạng thái `completed` (chưa có findings để giải thích).
+  - `401 Unauthorized`: provider từ chối `api_key` (sai hoặc hết quyền dùng model).
+  - `429 Too Many Requests`: provider báo vượt hạn mức/tốc độ miễn phí.
+  - `502 Bad Gateway` / `504 Gateway Timeout`: lỗi mạng hoặc hết thời gian chờ khi gọi provider.
+  - `422 Unprocessable Content`: thiếu trường bắt buộc, `provider` không hợp lệ, hoặc `api_key` quá ngắn.
 
 ---
 

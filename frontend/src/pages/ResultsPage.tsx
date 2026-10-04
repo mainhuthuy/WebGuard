@@ -7,14 +7,33 @@ import {
   ShieldCheck,
   FileJson,
   FileText,
+  Sparkles,
+  Settings as SettingsIcon,
 } from 'lucide-react'
 import { ScoreCard, SeverityChart, FindingDetail } from '../components/results'
 import { Card, Badge, Button, Modal } from '../components/common'
 import { useReport } from '../hooks/useReport'
+import { scanApi, toApiError } from '../services'
+import { getAISettings } from '../utils/aiSettings'
+import { USE_MOCK } from '../config'
 import type { ScanResult, Severity, Finding } from '../types'
 import './ResultsPage.css'
 
 const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low', 'info']
+
+const MOCK_EXPLANATION = `## Overall risk
+This scan found a mix of missing security headers and weaker TLS configuration. None of the
+findings indicate an active compromise, but several are easy wins.
+
+## Priority plan
+1. **Fix high-severity findings first** — add the missing headers and enforce HTTPS; these are
+   quick configuration changes with an outsized impact on real attacks like XSS and downgrade
+   attacks.
+2. **Clean up medium findings** — most share the same root cause (missing hardening headers) and
+   can be fixed together in your reverse proxy or framework config.
+3. **Low findings are nice-to-haves** — revisit once the above is done.
+
+_(This is a canned sample shown because mock mode is enabled — no real AI call was made.)_`
 
 interface ResultsPageProps {
   result: ScanResult
@@ -22,6 +41,8 @@ interface ResultsPageProps {
   onRescan?: () => void
   /** Label of the back button. @default 'New Scan' */
   backLabel?: string
+  /** Navigate to the AI Settings page (shown when no key is configured yet) */
+  onOpenAISettings?: () => void
 }
 
 export default function ResultsPage({
@@ -29,11 +50,41 @@ export default function ResultsPage({
   onBack,
   onRescan,
   backLabel = 'New Scan',
+  onOpenAISettings,
 }: ResultsPageProps) {
   const [activeFilter, setActiveFilter] = useState<Severity | 'all'>('all')
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
+
+  // AI explain (BYOK) — see utils/aiSettings.ts and POST /scan/{id}/explain
+  const [aiState, setAiState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const aiSettings = getAISettings()
+
+  const handleExplain = useCallback(async () => {
+    setAiState('loading')
+    setAiError(null)
+    try {
+      if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 600))
+        setAiExplanation(MOCK_EXPLANATION)
+      } else {
+        if (!aiSettings) throw new Error('No AI provider configured yet.')
+        const { explanation } = await scanApi.explainScan(result.scan_id, {
+          provider: aiSettings.provider,
+          api_key: aiSettings.apiKey,
+          model: aiSettings.model,
+        })
+        setAiExplanation(explanation)
+      }
+      setAiState('done')
+    } catch (err) {
+      setAiError(toApiError(err).message)
+      setAiState('error')
+    }
+  }, [aiSettings, result.scan_id])
 
   // Close export dropdown on outside click
   useEffect(() => {
@@ -135,6 +186,67 @@ export default function ResultsPage({
           <SeverityChart summary={result.summary} />
         </Card>
       </div>
+
+      {/* AI explain (BYOK) */}
+      <Card padding="default" className="ai-explain">
+        {aiState === 'done' && aiExplanation ? (
+          <div className="ai-explain__result">
+            <div className="ai-explain__result-header">
+              <Sparkles size={16} /> AI explanation & remediation plan
+            </div>
+            <div className="ai-explain__text">{aiExplanation}</div>
+            <Button variant="ghost" size="sm" onClick={handleExplain} id="ai-explain-regenerate-btn">
+              Regenerate
+            </Button>
+          </div>
+        ) : !USE_MOCK && !aiSettings ? (
+          <div className="ai-explain__prompt">
+            <div>
+              <div className="ai-explain__prompt-title">
+                <Sparkles size={16} /> Get a detailed, AI-written remediation plan
+              </div>
+              <p className="ai-explain__prompt-text">
+                Paste your own free AI API key once in Settings, then explain any scan’s findings
+                in plain language — no new requests are sent to the scanned site.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<SettingsIcon size={14} />}
+              onClick={onOpenAISettings}
+              id="ai-explain-open-settings-btn"
+            >
+              Set up AI Settings
+            </Button>
+          </div>
+        ) : (
+          <div className="ai-explain__prompt">
+            <div>
+              <div className="ai-explain__prompt-title">
+                <Sparkles size={16} /> Explain these findings with AI
+              </div>
+              <p className="ai-explain__prompt-text">
+                Uses the findings already found above — no new requests are sent to the scanned
+                site.
+              </p>
+              {aiState === 'error' && aiError && (
+                <p className="ai-explain__error">{aiError}</p>
+              )}
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={aiState === 'loading'}
+              leftIcon={<Sparkles size={14} />}
+              onClick={handleExplain}
+              id="ai-explain-btn"
+            >
+              Explain with AI
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* Findings section */}
       <div>

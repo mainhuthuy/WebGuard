@@ -10,12 +10,13 @@ import { buildMockResultFromHistory } from './utils/mockScan'
 import { USE_MOCK } from './config'
 import type { ScanHistoryItem, ScanMode, ScanResult } from './types'
 
-// Results pulls in Recharts; About is rarely visited — keep both out of the main bundle
+// Results pulls in Recharts; About/Settings are rarely visited — keep all out of the main bundle
 const ResultsPage = lazy(() => import('./pages/ResultsPage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 /** App-level view state */
-type AppView = 'scan' | 'progress' | 'results' | 'history' | 'reports' | 'about'
+type AppView = 'scan' | 'progress' | 'results' | 'history' | 'reports' | 'about' | 'settings'
 
 /** Where the currently displayed results came from (decides the back button) */
 type ResultsSource = 'scan' | 'history'
@@ -148,6 +149,7 @@ export default function App() {
                 onBack={handleBackFromResults}
                 backLabel={resultsSource === 'history' ? 'Back to History' : 'New Scan'}
                 onRescan={() => handleStartScan(shownResult.url, shownResult.mode)}
+                onOpenAISettings={() => handleNavigate('settings', '/settings')}
               />
             </Suspense>
           )}
@@ -187,6 +189,12 @@ export default function App() {
           {view === 'about' && (
             <Suspense fallback={<PageFallback />}>
               <AboutPage onStartScan={() => handleNavigate('scan', '/')} />
+            </Suspense>
+          )}
+
+          {view === 'settings' && (
+            <Suspense fallback={<PageFallback />}>
+              <SettingsPage />
             </Suspense>
           )}
         </main>

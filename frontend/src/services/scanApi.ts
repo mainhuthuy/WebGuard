@@ -6,6 +6,8 @@ import { apiClient } from './apiClient'
 import { API_BASE_URL } from '../config'
 import type {
   ApiDeleteResponse,
+  ApiExplainRequest,
+  ApiExplainResponse,
   ApiHistoryPage,
   ApiHistoryStats,
   ApiScanCancelResponse,
@@ -32,6 +34,20 @@ export const scanApi = {
   async cancelScan(scanId: string): Promise<ApiScanCancelResponse> {
     const { data } = await apiClient.post<ApiScanCancelResponse>(
       `/scan/${encodeURIComponent(scanId)}/cancel`,
+    )
+    return data
+  },
+
+  /**
+   * POST /scan/{id}/explain — ask an AI provider (BYOK: the user's own API key) to explain the
+   * findings and suggest a detailed remediation plan. The request body carries the user's own
+   * key straight through to our backend, which forwards it once to the provider and never stores
+   * it. No new requests are sent to the scanned target by this call.
+   */
+  async explainScan(scanId: string, body: ApiExplainRequest): Promise<ApiExplainResponse> {
+    const { data } = await apiClient.post<ApiExplainResponse>(
+      `/scan/${encodeURIComponent(scanId)}/explain`,
+      body,
     )
     return data
   },
