@@ -1,21 +1,180 @@
+/* ============================================================
+   WebGuard Animations & Keyframes
+   Reusable micro-animations for the Cyber Dark Vibe theme.
+   ============================================================ */
+
+/* ── Keyframes ───────────────────────────────────────────── */
+
+/* Soft glow pulse — used on cards, badges, focus rings */
 @keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
-  }
+  0%, 100% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.15); }
+  50%      { box-shadow: 0 0 28px rgba(99, 102, 241, 0.45); }
 }
 
+/* Cyan glow variant */
+@keyframes pulse-glow-cyan {
+  0%, 100% { box-shadow: 0 0 12px rgba(6, 182, 212, 0.15); }
+  50%      { box-shadow: 0 0 28px rgba(6, 182, 212, 0.45); }
+}
+
+/* Horizontal scanner bar — the classic cybersecurity motif */
 @keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(1000%);
+  0%   { transform: translateY(-100%); opacity: 1; }
+  100% { transform: translateY(1200%); opacity: 0; }
+}
+
+/* Shimmer (skeleton loading) */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Fade in from transparent */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Fade in and slide up */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade in and slide down */
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Scale in (modal / tooltip) */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Slide in from right (sidebar, drawer) */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Slide in from left */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Spin (loading indicator) */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Bounce-in (spring-like entrance) */
+@keyframes bounce-in {
+  0%   { opacity: 0; transform: scale(0.3); }
+  50%  { opacity: 1; transform: scale(1.05); }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+/* Progress bar fill sweep */
+@keyframes progress-fill {
+  from { width: 0%; }
+  to   { width: var(--progress-value, 100%); }
+}
+
+/* Orbital rotation for decorative elements */
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+}
+
+/* Data stream — vertical flowing dots effect */
+@keyframes data-stream {
+  0%   { opacity: 0; transform: translateY(-10px); }
+  50%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(10px); }
+}
+
+/* Text reveal typing */
+@keyframes typing {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* Blink cursor for typing effect */
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50%      { border-color: var(--cyan); }
+}
+
+/* Ripple effect */
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
   }
 }
 
-.glow-effect {
-  animation: pulse-glow 3s infinite ease-in-out;
+/* ── Animation utility classes ───────────────────────────── */
+
+/* Glow effects */
+.anim-glow         { animation: pulse-glow 3s infinite ease-in-out; }
+.anim-glow-cyan    { animation: pulse-glow-cyan 3s infinite ease-in-out; }
+
+/* Entrances */
+.anim-fade-in      { animation: fade-in var(--duration-normal) var(--ease-out) both; }
+.anim-fade-in-up   { animation: fade-in-up var(--duration-slow) var(--ease-out) both; }
+.anim-fade-in-down { animation: fade-in-down var(--duration-slow) var(--ease-out) both; }
+.anim-scale-in     { animation: scale-in var(--duration-normal) var(--ease-spring) both; }
+.anim-bounce-in    { animation: bounce-in var(--duration-slower) var(--ease-default) both; }
+.anim-slide-right  { animation: slide-in-right var(--duration-slow) var(--ease-out) both; }
+.anim-slide-left   { animation: slide-in-left var(--duration-slow) var(--ease-out) both; }
+
+/* Continuous */
+.anim-spin         { animation: spin 1s linear infinite; }
+.anim-scanline     { animation: scanline 2.5s var(--ease-in-out) infinite; }
+.anim-orbit        { animation: orbit 20s linear infinite; }
+
+/* Loading / skeleton */
+.anim-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    var(--bg-elevated) 50%,
+    var(--bg-tertiary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Staggered entrance — apply to children via CSS counter */
+.stagger-children > * {
+  opacity: 0;
+  animation: fade-in-up var(--duration-slow) var(--ease-out) both;
+}
+
+.stagger-children > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2)  { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3)  { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4)  { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5)  { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6)  { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7)  { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8)  { animation-delay: 420ms; }
+.stagger-children > *:nth-child(9)  { animation-delay: 480ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 540ms; }
+
+/* Reduced motion — respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

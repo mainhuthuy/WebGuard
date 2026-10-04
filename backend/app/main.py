@@ -1,14 +1,13 @@
 """Main application entrypoint for WebGuard API service."""
 
-from app.api.v1 import api_router
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-import logging
-from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1 import api_router
 from app.core import (
     RequestLoggingMiddleware,
     Settings,
@@ -22,15 +21,22 @@ logger = logging.getLogger("app.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Quản lý vòng đời ứng dụng: Khởi chạy logging và thông báo khi bật/tắt server."""
+    """Quản lý vòng đời ứng dụng: Khởi chạy logging, DB tables và thông báo khi bật/tắt server."""
     settings = get_settings()
     setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)
+
+    # Khởi tạo tables trong database nếu chưa có
+    from app.db.session import init_db
+
+    init_db()
+
     logger.info(
         f"Khởi động {settings.APP_NAME} v{settings.APP_VERSION} "
         f"[env={settings.ENV}, debug={settings.DEBUG}]"
     )
     yield
     logger.info(f"Đang tắt ứng dụng {settings.APP_NAME}")
+
 
 
 def create_application(settings: Settings | None = None) -> FastAPI:
@@ -63,10 +69,13 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     # 3. Kích hoạt bộ xử lý lỗi toàn cục (Global Error Handlers)
     register_exception_handlers(app)
 
-    # 4. Gắn các API Routers v1 vào ứng dụng
+    # 4. Lưu settings vào app state để các router con truy cập được
+    app.state.settings = settings
+
+    # 5. Gắn các API Routers v1 vào ứng dụng
     app.include_router(api_router, prefix="/api/v1")
 
-    # 5. Các endpoint cơ bản ban đầu
+    # 5. Endpoint gốc kiểm tra API
     @app.get("/", tags=["General"])
     async def root() -> dict[str, str]:
         """Endpoint gốc kiểm tra API còn sống."""
@@ -75,17 +84,6 @@ def create_application(settings: Settings | None = None) -> FastAPI:
             "version": settings.APP_VERSION,
             "status": "online",
             "docs": "/docs" if not settings.is_production else "disabled",
-        }
-
-    @app.get("/api/v1/health", tags=["Health"])
-    async def health_check() -> dict[str, Any]:
-        """Health check endpoint cung cấp metadata hệ thống."""
-        return {
-            "status": "healthy",
-            "service": "webguard-backend",
-            "version": settings.APP_VERSION,
-            "environment": settings.ENV,
-            "demo_mode": settings.DEMO_MODE,
         }
 
     return app

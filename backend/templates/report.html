@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGuard — Báo cáo quét {{ target_url }}</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-card: #1a1a2e;
+            --bg-header: #16213e;
+            --accent-cyan: #00d4ff;
+            --accent-green: #00e676;
+            --accent-yellow: #ffd600;
+            --accent-orange: #ff9100;
+            --accent-red: #ff1744;
+            --text-primary: #e0e0e0;
+            --text-secondary: #9e9e9e;
+            --border: #2a2a3e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        /* Header */
+        .report-header {
+            background: linear-gradient(135deg, var(--bg-header), var(--bg-card));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .report-header h1 {
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+        }
+        .report-header .target-url {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+        .report-header .meta {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Score Card */
+        .score-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        .grade-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .grade-A { border: 4px solid var(--accent-green); color: var(--accent-green); }
+        .grade-B { border: 4px solid var(--accent-cyan); color: var(--accent-cyan); }
+        .grade-C { border: 4px solid var(--accent-yellow); color: var(--accent-yellow); }
+        .grade-D { border: 4px solid var(--accent-orange); color: var(--accent-orange); }
+        .grade-F { border: 4px solid var(--accent-red); color: var(--accent-red); }
+        .score-details h2 { font-size: 1.3rem; margin-bottom: 0.3rem; }
+        .score-details .score-value { font-size: 2rem; font-weight: 700; }
+        .score-details .total-findings { color: var(--text-secondary); font-size: 0.9rem; }
+
+        /* Summary */
+        .summary-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .summary-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+        .summary-item .count {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .summary-item .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        .sev-critical .count { color: var(--accent-red); }
+        .sev-high .count { color: var(--accent-orange); }
+        .sev-medium .count { color: var(--accent-yellow); }
+        .sev-low .count { color: var(--accent-green); }
+
+        /* Findings */
+        .findings-section h2 {
+            font-size: 1.2rem;
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .finding-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--text-secondary);
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 0.8rem;
+        }
+        .finding-card.severity-critical { border-left-color: var(--accent-red); }
+        .finding-card.severity-high { border-left-color: var(--accent-orange); }
+        .finding-card.severity-medium { border-left-color: var(--accent-yellow); }
+        .finding-card.severity-low { border-left-color: var(--accent-green); }
+        .finding-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .finding-name { font-weight: 600; font-size: 1rem; }
+        .severity-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-critical { background: rgba(255,23,68,0.2); color: var(--accent-red); }
+        .badge-high { background: rgba(255,145,0,0.2); color: var(--accent-orange); }
+        .badge-medium { background: rgba(255,214,0,0.2); color: var(--accent-yellow); }
+        .badge-low { background: rgba(0,230,118,0.2); color: var(--accent-green); }
+        .finding-module {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+        .finding-desc { font-size: 0.9rem; margin-bottom: 0.5rem; }
+        .finding-remediation {
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            background: rgba(0,212,255,0.05);
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+        }
+        .finding-remediation::before { content: "💡 Khắc phục: "; font-weight: 600; }
+
+        /* Footer */
+        .report-footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+
+        /* No findings */
+        .no-findings {
+            text-align: center;
+            padding: 3rem;
+            color: var(--accent-green);
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="report-header">
+            <h1>🛡️ WebGuard — Báo Cáo Quét An Ninh</h1>
+            <div class="target-url">{{ target_url }}</div>
+            <div class="meta">
+                Mã phiên quét: <strong>{{ scan_id }}</strong> ·
+                Chế độ: <strong>{{ mode }}</strong> ·
+                Trạng thái: <strong>{{ status }}</strong> ·
+                Thời gian: {{ created_at }}{% if completed_at %} → {{ completed_at }}{% endif %}
+            </div>
+        </div>
+
+        {% if scoring %}
+        <!-- Score Card -->
+        <div class="score-card">
+            <div class="grade-circle grade-{{ scoring.grade[0] | upper }}">{{ scoring.grade }}</div>
+            <div class="score-details">
+                <h2>Điểm An Ninh Tổng Thể</h2>
+                <div class="score-value">{{ scoring.score }} / 100</div>
+                <div class="total-findings">Phát hiện {{ total_findings }} vấn đề bảo mật</div>
+            </div>
+        </div>
+
+        <!-- Summary Bar -->
+        <div class="summary-bar">
+            <div class="summary-item sev-critical">
+                <div class="count">{{ severity_counts.critical }}</div>
+                <div class="label">Critical</div>
+            </div>
+            <div class="summary-item sev-high">
+                <div class="count">{{ severity_counts.high }}</div>
+                <div class="label">High</div>
+            </div>
+            <div class="summary-item sev-medium">
+                <div class="count">{{ severity_counts.medium }}</div>
+                <div class="label">Medium</div>
+            </div>
+            <div class="summary-item sev-low">
+                <div class="count">{{ severity_counts.low }}</div>
+                <div class="label">Low</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Findings -->
+        <div class="findings-section">
+            <h2>📋 Chi Tiết Các Phát Hiện ({{ total_findings }})</h2>
+
+            {% if findings %}
+                {% for f in findings %}
+                <div class="finding-card severity-{{ f.severity }}">
+                    <div class="finding-header">
+                        <span class="finding-name">{{ f.name }}</span>
+                        <span class="severity-badge badge-{{ f.severity }}">{{ f.severity }}</span>
+                    </div>
+                    <div class="finding-module">Module: {{ f.module }}</div>
+                    <div class="finding-desc">{{ f.description }}</div>
+                    <div class="finding-remediation">{{ f.remediation }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-findings">✅ Không phát hiện vấn đề bảo mật nào. Tuyệt vời!</div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="report-footer">
+            Báo cáo được tạo tự động bởi <strong>WebGuard Security Scanner</strong> ·
+            {{ generated_at }}
+        </div>
+    </div>
+</body>
+</html>

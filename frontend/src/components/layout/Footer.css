@@ -1,0 +1,76 @@
+/* ============================================================
+   Footer Component Styles
+   Slim fixed-bottom footer with subtle styling.
+   ============================================================ */
+
+.footer {
+  height: var(--footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-6);
+  border-top: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  flex-shrink: 0;
+}
+
+/* No sidebar offset here: the footer sits inside .app-main, which is already shifted by the
+   sidebar width (and follows its collapsed state). Adding a margin would offset it twice. */
+
+.footer__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.footer__separator {
+  color: var(--border-default);
+}
+
+.footer__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.footer__link {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: var(--transition-colors);
+}
+
+.footer__link:hover {
+  color: var(--primary-400);
+}
+
+.footer__heart {
+  color: var(--severity-critical);
+  display: inline-block;
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15%      { transform: scale(1.15); }
+  30%      { transform: scale(1); }
+  45%      { transform: scale(1.1); }
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .footer {
+    padding: 0 var(--space-4);
+    flex-direction: column;
+    height: auto;
+    padding: var(--space-3) var(--space-4);
+    gap: var(--space-1);
+    text-align: center;
+  }
+
+  .footer__right {
+    display: none;
+  }
+}

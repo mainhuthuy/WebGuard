@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.env
+*.log
+
+# Not needed in the build stage; keeps the build context small
+.git
+tests
+*.md
+.vscode

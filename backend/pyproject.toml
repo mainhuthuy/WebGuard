@@ -73,13 +73,24 @@ select = [
 ignore = [
     "E501",   # line too long (handled by black)
     "S101",   # assert usage (needed for tests)
+    "B008",   # FastAPI's DI idiom (`db: Session = Depends(get_db)`) relies on a function
+              # call as the default value — this is the framework's documented pattern,
+              # not the mutable-default-argument bug this rule normally catches.
+    "UP042",  # `class Foo(str, Enum)` is intentional, not a migration-pending StrEnum:
+              # it predates 3.11's StrEnum, is well understood, and every status/severity
+              # enum here is covered by tests — not worth the churn of switching.
 ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "T20"]
+"tests/**/*.py" = [
+    "S101",  # assert usage (needed for tests)
+    "T20",   # print() usage
+    "S603",  # subprocess call in test_ssl_tls_legacy.py — spawns the local `openssl` CLI
+    "S607",  # to generate a throwaway test certificate; not untrusted/external input
+]
 
 [tool.black]
 target-version = ["py312"]

@@ -1,0 +1,23 @@
+# Not needed in the image; the Dockerfile only COPYs app/, templates/, alembic.ini,
+# pyproject.toml explicitly — this file mainly keeps the build context small and
+# acts as a safety net if that ever changes to `COPY . .`.
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+*.egg-info/
+
+# Local-only data — never belongs in an image
+*.db
+.env
+
+# Not needed at runtime (tests run outside the image, in CI/pre-commit)
+tests/
+
+# VCS / editor
+.git/
+.gitignore

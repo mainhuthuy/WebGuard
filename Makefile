@@ -20,7 +20,7 @@ dev-be: ## Run backend development server
 	cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 dev-fe: ## Run frontend development server
-	cd frontend && pnpm dev
+	cd frontend && npm run dev
 
 # ============================================
 # Testing
@@ -32,7 +32,7 @@ test-be: ## Run backend tests
 	cd backend && python -m pytest
 
 test-fe: ## Run frontend tests
-	cd frontend && pnpm test
+	cd frontend && npm test
 
 # ============================================
 # Linting & Formatting
@@ -45,12 +45,12 @@ lint-be: ## Lint backend code
 	cd backend && python -m mypy app/
 
 lint-fe: ## Lint frontend code
-	cd frontend && pnpm lint
+	cd frontend && npm run lint
 
 format: ## Format all code
 	cd backend && python -m ruff check --fix app/ tests/
 	cd backend && python -m black app/ tests/
-	cd frontend && pnpm format
+	cd frontend && npm run format
 
 # ============================================
 # Docker
@@ -77,7 +77,7 @@ setup: ## Initial project setup
 	cd backend && python -m venv .venv
 	cd backend && .venv/Scripts/activate && pip install -e ".[dev]"
 	@echo "Setting up Frontend..."
-	cd frontend && pnpm install
+	cd frontend && npm install
 	@echo "Setting up pre-commit hooks..."
 	pre-commit install
 	@echo "Setup complete! Run 'make dev' to start developing."
@@ -94,4 +94,4 @@ clean: ## Clean build artifacts and caches
 
 audit: ## Run security audit on dependencies
 	cd backend && pip-audit
-	cd frontend && pnpm audit
+	cd frontend && npm audit

@@ -134,19 +134,19 @@ cd backend && pip-audit
 
 ```powershell
 # Chạy dev server
-cd frontend && pnpm dev
+cd frontend && npm run dev
 
 # Chạy tests
-cd frontend && pnpm test
+cd frontend && npm test
 
 # Lint
-cd frontend && pnpm lint
+cd frontend && npm run lint
 
 # Format
-cd frontend && pnpm format
+cd frontend && npm run format
 
 # Build production
-cd frontend && pnpm build
+cd frontend && npm run build
 ```
 
 ### Docker

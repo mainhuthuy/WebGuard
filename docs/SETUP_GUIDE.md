@@ -29,11 +29,11 @@ node --version
 # ❌ Lỗi → Cài từ https://nodejs.org/ (chọn LTS)
 ```
 
-### 4. pnpm
+### 4. npm
 ```powershell
-pnpm --version
-# ✅ "9.x.x" → SKIP
-# ❌ Lỗi → Cài bằng: npm install -g pnpm
+npm --version
+# ✅ "10.x.x" → SKIP
+# ❌ Lỗi → npm đi kèm Node.js, hãy cài lại Node.js LTS từ https://nodejs.org/
 ```
 
 ### 5. Docker & Docker Compose
@@ -106,13 +106,13 @@ python -m uvicorn app.main:app --reload --port 8000
 cd frontend
 
 # Cài đặt dependencies
-pnpm install
+npm install
 
 # Copy file environment variables
 copy .env.example .env
 
 # Verify: chạy thử React dev server
-pnpm dev
+npm run dev
 # ✅ Mở http://localhost:5173 → thấy React app
 ```
 
@@ -183,8 +183,10 @@ netstat -ano | findstr :8000
 taskkill /PID <PID> /F
 ```
 
-### pnpm lỗi liên quan Corepack
+### npm install lỗi hoặc node_modules hỏng
 ```powershell
-corepack disable pnpm
-npm install -g pnpm --force
+cd frontend
+Remove-Item -Recurse -Force node_modules
+npm cache verify
+npm ci   # cài đúng theo package-lock.json
 ```

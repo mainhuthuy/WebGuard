@@ -1,7 +1,7 @@
 """Application configuration settings using Pydantic Settings."""
 
-from functools import lru_cache
 import json
+from functools import lru_cache
 from typing import Any
 
 from pydantic import field_validator
@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     ENV: str = "development"  # development | production | testing
     DEBUG: bool = True
-    HOST: str = "0.0.0.0"
+    HOST: str = "0.0.0.0"  # noqa: S104 — intentional: must bind every interface inside a container
     PORT: int = 8000
 
     # 2. Cấu hình CORS (cho phép frontend gọi API)

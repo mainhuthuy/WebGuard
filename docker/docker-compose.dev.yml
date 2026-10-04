@@ -1,3 +1,5 @@
+# See docker-compose.yml for why this needs its own explicit project name.
+name: webguard-dev
 services:
   backend:
     build:
@@ -8,7 +10,8 @@ services:
     environment:
       - WEBGUARD_ENV=development
       - WEBGUARD_DEBUG=true
-      - WEBGUARD_DB_URL=sqlite:///./webguard.db
+      # Must live under /app/data — see docker-compose.yml for why
+      - WEBGUARD_DB_URL=sqlite:////app/data/webguard.db
     volumes:
       - ../backend/app:/app/app
       - backend_data:/app/data
@@ -24,7 +27,7 @@ services:
       - "5173:5173"
     volumes:
       - ../frontend/src:/app/src
-    command: pnpm dev --host 0.0.0.0
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend
     restart: unless-stopped

@@ -1,9 +1,9 @@
 """Custom ASGI middlewares for request tracking, execution timing, and access logging."""
 
-from collections.abc import Callable
 import logging
 import time
 import uuid
+from collections.abc import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

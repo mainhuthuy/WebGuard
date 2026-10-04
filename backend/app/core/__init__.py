@@ -11,6 +11,7 @@ from app.core.errors import (
 )
 from app.core.logging import setup_logging
 from app.core.middleware import RequestLoggingMiddleware
+from app.core.security import assert_public_target
 
 __all__ = [
     "Settings",
@@ -23,4 +24,5 @@ __all__ = [
     "ScanExecutionException",
     "RateLimitExceededException",
     "register_exception_handlers",
+    "assert_public_target",
 ]

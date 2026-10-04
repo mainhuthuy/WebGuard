@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 
+# Timeout (giây) cho mọi request HTTP gửi tới website mục tiêu
+HTTP_TIMEOUT = 10.0
+
 class BaseModule(ABC):
     @property
     @abstractmethod

@@ -1,3 +1,5 @@
+# See docker-compose.yml for why this needs its own explicit project name.
+name: webguard-demo
 services:
   demo-backend:
     build:
