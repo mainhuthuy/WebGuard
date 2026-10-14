@@ -27,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `backend-ci.yml`: Ruff lint + Pytest with coverage report artifact on every PR/push touching
     `backend/**`.
   - `frontend-ci.yml`: ESLint, `tsc -b` type check and Vite build as three parallel jobs on
-    `frontend/**` changes. The Vitest suite is deliberately not in CI yet (one flaky test was seen).
+    `frontend/**` changes, plus a Vitest job. The flaky tests (AboutPage / App scan flow) were
+    timeouts under load: raised `testTimeout` to 20s and Testing Library `asyncUtilTimeout` to 15s.
   - `cd-publish-images.yml`: builds the backend and frontend (`production` target) images and pushes
     them to GitHub Container Registry on pushes to `main` and `vX.Y.Z` tags — never on pull requests.
     Tags: `main`, `sha-<short>`, semver, and `latest` only for release tags.
