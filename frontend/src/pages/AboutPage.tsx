@@ -53,10 +53,10 @@ const STEPS: { title: string; description: string }[] = [
 ]
 
 const SCORING: { severity: string; penalty: number; color: string }[] = [
-  { severity: 'Critical', penalty: 15, color: 'var(--severity-critical)' },
-  { severity: 'High', penalty: 10, color: 'var(--severity-high)' },
-  { severity: 'Medium', penalty: 5, color: 'var(--severity-medium)' },
-  { severity: 'Low', penalty: 2, color: 'var(--severity-low)' },
+  { severity: 'Critical', penalty: 10, color: 'var(--severity-critical)' },
+  { severity: 'High', penalty: 6, color: 'var(--severity-high)' },
+  { severity: 'Medium', penalty: 3, color: 'var(--severity-medium)' },
+  { severity: 'Low', penalty: 1, color: 'var(--severity-low)' },
 ]
 
 const GRADES: { grade: string; range: string; color: string }[] = [
@@ -206,6 +206,10 @@ export default function AboutPage({ onStartScan }: AboutPageProps) {
                 </li>
               ))}
             </ul>
+            <p className="about-table__note">
+              The same kind of issue repeated (e.g. several cookies missing SameSite) counts in full
+              once, then at half penalty for each repeat.
+            </p>
           </Card>
           <Card variant="flat" className="about-table-card">
             <h3 className="about-table__heading">Grade scale</h3>

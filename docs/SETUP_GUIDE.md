@@ -56,6 +56,30 @@ make --version
 
 ---
 
+## ⚡ Cách nhanh: một lệnh (khuyến nghị)
+
+Sau khi đã cài Python 3.12+ và Node.js 18+ (xem Prerequisites bên dưới), clone dự án rồi chạy:
+
+```powershell
+# Windows
+.\scripts\setup-dev.ps1
+```
+```bash
+# Linux / macOS / Git Bash
+./scripts/setup-dev.sh
+```
+
+Script tự kiểm tra công cụ, tạo `backend/.venv`, cài dependencies cho backend + frontend và tạo file `.env` từ `.env.example` (không ghi đè `.env` đã có; chạy lại nhiều lần vẫn an toàn). Tùy chọn:
+
+| Tùy chọn (PowerShell / Bash) | Tác dụng |
+|---|---|
+| `-CheckOnly` / `--check` | Chỉ kiểm tra công cụ, không thay đổi gì |
+| `-Docker` / `--docker` | Bỏ qua cài local, chạy stack Docker hot-reload (`docker-compose.dev.yml`) |
+
+Làm xong, chạy app theo hướng dẫn script in ra. Muốn hiểu từng bước hoặc cài thủ công, đọc tiếp **Bước 1 → 5** bên dưới.
+
+---
+
 ## Bước 1: Clone / Tải dự án
 
 ```powershell
@@ -141,6 +165,7 @@ pre-commit run --all-files
 cd docker
 
 # Build và chạy tất cả services
+# (lần đầu build có thể mất ~10 phút vì tải/cài dependencies; các lần sau chỉ vài giây nhờ cache)
 docker compose up -d
 
 # Kiểm tra
@@ -150,6 +175,16 @@ docker compose ps
 # Dừng
 docker compose down
 ```
+
+Frontend: http://localhost:5173 · API docs: http://localhost:8000/docs
+
+Chế độ dev có hot-reload (sửa code là thấy ngay, không cần build lại):
+
+```powershell
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Ghi đè cổng / CORS: copy `docker/.env.example` thành `docker/.env` rồi sửa.
 
 ---
 
@@ -165,6 +200,19 @@ docker compose down
 | `make format` | Auto-format code |
 | `make docker-up` | Chạy Docker Compose |
 | `make docker-down` | Dừng Docker |
+
+### Chạy đúng các kiểm tra mà CI chạy
+
+| Khu vực | Lệnh (từ thư mục tương ứng) |
+|---|---|
+| Backend lint | `ruff check app/ tests/` |
+| Backend test | `pytest` |
+| Frontend lint | `npm run lint` |
+| Frontend type check | `npx tsc -b` |
+| Frontend build | `npx vite build` |
+| Frontend test | `npm test` (chưa nằm trong CI) |
+
+Chi tiết quy trình đóng góp: [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ---
 

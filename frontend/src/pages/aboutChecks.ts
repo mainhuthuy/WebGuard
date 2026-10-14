@@ -31,25 +31,25 @@ export const SEVERITY_GUIDE: { severity: CheckSeverity; label: string; meaning: 
     severity: 'critical',
     label: 'Critical',
     meaning: 'Immediate danger: secrets are exposed, or traffic and accounts can be taken over. Fix these first.',
-    penalty: 15,
+    penalty: 10,
   },
   {
     severity: 'high',
     label: 'High',
     meaning: 'A serious weakness that makes real attacks easy (script injection, interception). Fix soon.',
-    penalty: 10,
+    penalty: 6,
   },
   {
     severity: 'medium',
     label: 'Medium',
     meaning: 'A missing layer of defence, or information that helps an attacker. Plan a fix.',
-    penalty: 5,
+    penalty: 3,
   },
   {
     severity: 'low',
     label: 'Low',
     meaning: 'Minor hardening or informational. Fix when convenient.',
-    penalty: 2,
+    penalty: 1,
   },
 ]
 

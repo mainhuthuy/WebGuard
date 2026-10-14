@@ -41,14 +41,14 @@ async def test_scanner_orchestrator_and_schema_validation():
     assert result["total_findings"] == 7
     assert len(result["findings"]) == 7
 
-    # 2. Kiểm tra tính điểm: 100 - (7 x 5 điểm medium) = 65 -> Grade C
-    assert result["scoring"]["score"] == 65
-    assert result["scoring"]["grade"] == "C"
+    # 2. Kiểm tra tính điểm: 100 - (7 x 3 điểm medium, mỗi module một loại riêng) = 79 -> Grade B
+    assert result["scoring"]["score"] == 79
+    assert result["scoring"]["grade"] == "B"
 
     # 3. Kiểm tra Hợp đồng dữ liệu Pydantic (Không được raise lỗi ValidationError)
     response_model = ScanResponse(**result)
     assert response_model.total_findings == 7
-    assert response_model.scoring.grade == "C"
+    assert response_model.scoring.grade == "B"
 
 @pytest.mark.asyncio
 async def test_scanner_resilience_when_module_fails():

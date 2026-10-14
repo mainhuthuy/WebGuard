@@ -166,12 +166,15 @@ def _raise_for_status(response: httpx.Response, provider: str) -> None:
 
 
 async def _call_google(client: httpx.AsyncClient, base_url: str, api_key: str, model: str, prompt: str) -> str:
-    url = f"{base_url}/models/{model}:generateContent?key={api_key}"
+    # Key goes in a header, never the query string: httpx logs the full request URL at
+    # INFO level, which would write the user's key into the server logs.
+    url = f"{base_url}/models/{model}:generateContent"
+    headers = {"x-goog-api-key": api_key}
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"maxOutputTokens": MAX_OUTPUT_TOKENS},
     }
-    response = await client.post(url, json=body)
+    response = await client.post(url, json=body, headers=headers)
     _raise_for_status(response, "Google")
     data = response.json()
     try:

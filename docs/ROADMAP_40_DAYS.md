@@ -115,18 +115,20 @@ Ngày 36-40 │ Sprint 5 │ ░░░░░░░░░░░░░░░░░
 
 **Mục tiêu:** Đóng gói Docker hoàn chỉnh, xây dựng pipeline DevSecOps tự động kiểm tra bảo mật cho chính dự án.
 
-| # | Task | Chi tiết | Ước tính |
-|---|------|----------|----------|
-| 4.1 | Backend Dockerfile | Multi-stage build (tối ưu dung lượng image) | 2h |
-| 4.2 | Frontend Dockerfile | Multi-stage build + Nginx alpine phục vụ static bundle | 2h |
-| 4.3 | Docker Compose | Cấu hình file chạy Production và Dev (hot-reload) | 2h |
-| 4.4 | CI: Backend Pipeline | GitHub Actions: Tự động chạy Lint (Ruff) + Test (Pytest) khi tạo PR | 2.5h |
-| 4.5 | CI: Frontend Pipeline | GitHub Actions: Lint (ESLint) + Type Check (TSC) + Build check | 2h |
-| 4.6 | CD: Container Registry | Tự động build và push Docker image lên GitHub Container Registry | 2h |
-| 4.7 | DevSecOps in Pipeline | Quét lỗ hổng dependencies bằng `pip-audit` + quét Docker image bằng `Trivy` | 2h |
-| 4.8 | Setup Scripts | Viết script chạy nhanh 1 click: `setup-dev.ps1` (Windows) & `setup-dev.sh` | 1.5h |
-| 4.9 | End-to-End Docker Test | Kiểm tra lệnh `docker compose up -d` trên máy sạch | 2h |
-| 4.10 | `CONTRIBUTING.md` | Hướng dẫn cộng tác và phát triển dành cho người mới | 1h |
+| # | Task | Chi tiết | Ước tính | Trạng thái |
+|---|------|----------|----------|-----------|
+| 4.1 | Backend Dockerfile | Multi-stage build (tối ưu dung lượng image) | 2h | ✅ |
+| 4.2 | Frontend Dockerfile | Multi-stage build + Nginx alpine phục vụ static bundle | 2h | ✅ |
+| 4.3 | Docker Compose | Cấu hình file chạy Production và Dev (hot-reload) | 2h | ✅ |
+| 4.4 | CI: Backend Pipeline | GitHub Actions: Tự động chạy Lint (Ruff) + Test (Pytest) khi tạo PR | 2.5h | 🟡 đã viết, chưa chạy trên GitHub |
+| 4.5 | CI: Frontend Pipeline | GitHub Actions: Lint (ESLint) + Type Check (TSC) + Build check | 2h | 🟡 đã viết, chưa chạy trên GitHub |
+| 4.6 | CD: Container Registry | Tự động build và push Docker image lên GitHub Container Registry | 2h | 🟡 đã viết, chưa chạy trên GitHub |
+| 4.7 | DevSecOps in Pipeline | Quét lỗ hổng dependencies bằng `pip-audit` + quét Docker image bằng `Trivy` | 2h | 🟡 đã viết, chưa chạy trên GitHub |
+| 4.8 | Setup Scripts | Viết script chạy nhanh 1 click: `setup-dev.ps1` (Windows) & `setup-dev.sh` | 1.5h | ✅ (chưa chạy luồng cài đầy đủ) |
+| 4.9 | End-to-End Docker Test | Kiểm tra lệnh `docker compose up -d` trên máy sạch | 2h | ✅ (Windows + Docker Desktop) |
+| 4.10 | `CONTRIBUTING.md` | Hướng dẫn cộng tác và phát triển dành cho người mới | 1h | ✅ |
+
+> **Ghi chú trạng thái:** 🟡 = workflow đã viết nhưng **chưa chạy trên GitHub Actions** và chưa được kiểm tra cú pháp YAML (các lệnh ESLint/`tsc`/Vite build đã chạy thử ở local; lệnh Ruff/Pytest/`pip-audit`/Trivy thì chưa chạy ở máy này); `pip-audit` và Trivy chưa chạy lần nào, lần đầu có thể đỏ do CVE sẵn có. CI frontend chưa gồm `npm test` (còn 1 test chập chờn cần tìm ra). Tài liệu từng task: `docs/learning/4.1` – `4.10`.
 
 **DoD:** Người dùng chỉ cần gõ duy nhất 1 lệnh `docker compose up -d` là toàn bộ hệ thống hoạt động hoàn hảo. Pipeline CI/CD tự động xanh trên GitHub.
 

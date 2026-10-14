@@ -123,12 +123,19 @@ def _local_tls_server(tmp_path: Any, min_version: ssl.TLSVersion, max_version: s
     if shutil.which("openssl") is None:
         pytest.skip("cần openssl CLI để sinh chứng chỉ thử nghiệm")
     cert, key = tmp_path / "cert.pem", tmp_path / "key.pem"
-    subprocess.run(
-        ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
-         "-subj", "/CN=localhost", "-keyout", str(key), "-out", str(cert)],
-        check=True,
-        capture_output=True,
-    )
+    # Config tối thiểu của riêng test: một số bản openssl trên Windows (vd Strawberry Perl)
+    # trỏ tới file openssl.cnf không tồn tại và `req` sẽ lỗi nếu dựa vào cấu hình toàn cục.
+    config = tmp_path / "openssl.cnf"
+    config.write_text("[req]\ndistinguished_name = dn\nprompt = no\n[dn]\nCN = localhost\n")
+    try:
+        subprocess.run(
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+             "-config", str(config), "-keyout", str(key), "-out", str(cert)],
+            check=True,
+            capture_output=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        pytest.skip(f"openssl CLI của máy này không sinh được chứng chỉ thử nghiệm: {exc.stderr[-200:]!r}")
     try:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(str(cert), str(key))

@@ -22,6 +22,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docker-compose.yml`'s `BACKEND_PORT`, `FRONTEND_PORT` and `WEBGUARD_CORS_ORIGINS` are now
   overridable via `docker/.env` (copy from `docker/.env.example`) — previously that file
   wasn't wired to anything and copying it had no effect.
+- **CI/CD and DevSecOps pipelines (GitHub Actions)** — written but not yet run on GitHub
+  (only the frontend lint/tsc/build and `npm audit` commands were run locally; see `docs/learning/4.4`–`4.7`):
+  - `backend-ci.yml`: Ruff lint + Pytest with coverage report artifact on every PR/push touching
+    `backend/**`.
+  - `frontend-ci.yml`: ESLint, `tsc -b` type check and Vite build as three parallel jobs on
+    `frontend/**` changes. The Vitest suite is deliberately not in CI yet (one flaky test was seen).
+  - `cd-publish-images.yml`: builds the backend and frontend (`production` target) images and pushes
+    them to GitHub Container Registry on pushes to `main` and `vX.Y.Z` tags — never on pull requests.
+    Tags: `main`, `sha-<short>`, semver, and `latest` only for release tags.
+  - `security.yml`: `pip-audit` (runtime deps), `npm audit --omit=dev`, and Trivy image scans on PRs
+    and weekly. Only fixable HIGH/CRITICAL findings fail the build. The publish workflow also runs
+    Trivy *before* pushing, so a vulnerable image never reaches the registry.
+- **One-click dev setup**: `scripts/setup-dev.ps1` (Windows) and `scripts/setup-dev.sh` (Linux/macOS/
+  Git Bash) check prerequisites, create `backend/.venv`, install backend + frontend dependencies and
+  copy the `.env` files without overwriting existing ones. `-CheckOnly` / `--check` only verifies
+  prerequisites; `-Docker` / `--docker` starts the hot-reload Docker stack instead.
+- `CONTRIBUTING.md`: clone-to-merged-PR guide for newcomers, with the exact commands CI runs.
+- Learning notes `docs/learning/4.4`–`4.10`.
 - **Frontend production image now runs nginx fully unprivileged** (port 8080, non-root `nginx`
   user) and serves the security headers WebGuard's own `HeadersModule` checks for (CSP,
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
@@ -71,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     the password cannot possibly be correct, so the account can never actually be logged into
 
 ### Changed
+- README Quick Start now mentions the setup scripts and links to `CONTRIBUTING.md`
 - `cert_expired` is now actually reachable: expired certificates used to be reported as a generic
   `ssl_connection_failed` because verification failed before the expiry check ran
 - Full scans run 7 modules (Quick is unchanged: Headers + SSL/TLS)

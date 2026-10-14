@@ -60,7 +60,7 @@ describe('ScanPage', () => {
 describe('AboutPage', () => {
   it('renders the scoring reference matching the backend engine', () => {
     render(<AboutPage />)
-    expect(screen.getByText('−15')).toBeInTheDocument() // critical
+    expect(screen.getByText('−10')).toBeInTheDocument() // critical
     expect(screen.getByText('95 – 100')).toBeInTheDocument() // A+
   })
 
