@@ -96,7 +96,7 @@ jobs:
       # Fails the job on HIGH/CRITICAL findings that have a fix available. `ignore-unfixed`
       # keeps the gate actionable: you can't patch a CVE nobody has patched yet.
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: webguard-${{ matrix.name }}:scan
           severity: CRITICAL,HIGH
