@@ -21,6 +21,7 @@ async def _scan(
     options: httpx.Response | Exception | None = None,
     security_txt: httpx.Response | Exception | None = None,
     redirect_param: str | None = None,
+    redirect_location: str = "https://webguard-redirect-check.invalid/",
     url: str = URL,
 ) -> list[dict]:
     http = http if http is not None else _r(301, location="https://example.com/")
@@ -36,7 +37,7 @@ async def _scan(
         if target.endswith("/.well-known/security.txt"):
             return pick(security_txt)
         if redirect_param and f"{redirect_param}=" in target and "webguard-redirect-check.invalid" in target:
-            return _r(302, location="https://webguard-redirect-check.invalid/")
+            return _r(302, location=redirect_location)
         return pick(http)
 
     async def fake_request(self, method, target, **kwargs):  # type: ignore[no-untyped-def]
@@ -124,4 +125,16 @@ async def test_open_redirect_via_common_param_is_reported() -> None:
 
 async def test_open_redirect_checks_an_unusual_param_name_too() -> None:
     findings = await _scan(redirect_param="returnto")
+    assert _names(findings) == ["open_redirect"]
+
+
+async def test_redirect_to_a_bot_check_page_that_echoes_the_url_is_not_an_open_redirect() -> None:
+    """Regression: google.com/sorry/index?continue=<URL ta gửi> chứa marker nhưng đích là google.com."""
+    echoed = "https://www.google.com/sorry/index?continue=https://example.com/%3Fnext%3Dhttps%253A%252F%252Fwebguard-redirect-check.invalid%252F"
+    findings = await _scan(redirect_param="next", redirect_location=echoed)
+    assert "open_redirect" not in _names(findings)
+
+
+async def test_protocol_relative_redirect_to_the_marker_host_is_reported() -> None:
+    findings = await _scan(redirect_param="next", redirect_location="//webguard-redirect-check.invalid/x")
     assert _names(findings) == ["open_redirect"]

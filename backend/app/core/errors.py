@@ -140,12 +140,10 @@ async def validation_exception_handler(
     logger.warning(
         f"Validation failed on {request.method} {request.url.path}: {formatted_errors}"
     )
-    # Lấy mã 422 an toàn không bị cảnh báo deprecated
-    http_422 = getattr(
-        status, "HTTP_422_UNPROCESSABLE_CONTENT", status.HTTP_422_UNPROCESSABLE_ENTITY
-    )
+    # Dùng số 422 trực tiếp: Starlette đã đổi tên hằng số (ENTITY -> CONTENT) và truy cập
+    # hằng số cũ sẽ phát DeprecationWarning, kể cả khi dùng làm default của getattr().
     return create_error_response(
-        status_code=http_422,
+        status_code=422,
         code="VALIDATION_ERROR",
         message="Dữ liệu gửi lên không hợp lệ. Vui lòng kiểm tra lại.",
         details=formatted_errors,

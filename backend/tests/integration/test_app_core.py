@@ -127,3 +127,34 @@ def test_unhandled_exception_handler(client: TestClient) -> None:
     body = response.json()
     assert body["success"] is False
     assert body["error"]["code"] == "INTERNAL_SERVER_ERROR"
+
+
+# ---------------- CORS: không bao giờ phản chiếu origin lạ kèm credentials ----------------
+
+
+def _cors_headers(settings: Settings, origin: str) -> dict[str, str]:
+    app = create_application(settings=settings)
+    response = TestClient(app).get("/api/v1/health", headers={"Origin": origin})
+    return {k.lower(): v for k, v in response.headers.items()}
+
+
+def test_cors_default_does_not_allow_credentials() -> None:
+    headers = _cors_headers(Settings(ENV="testing", _env_file=None), "http://evil.example")
+    assert "access-control-allow-credentials" not in headers
+
+
+def test_cors_wildcard_never_reflects_origin_with_credentials() -> None:
+    """Dù cố tình bật credentials, origin "*" cũng không được kèm Allow-Credentials."""
+    settings = Settings(ENV="testing", CORS_ORIGINS=["*"], CORS_ALLOW_CREDENTIALS=True, _env_file=None)
+    headers = _cors_headers(settings, "http://evil.example")
+    assert "access-control-allow-credentials" not in headers
+
+
+def test_cors_explicit_origin_can_still_use_credentials() -> None:
+    settings = Settings(
+        ENV="testing", CORS_ORIGINS=["http://localhost:5173"], CORS_ALLOW_CREDENTIALS=True, _env_file=None
+    )
+    allowed = _cors_headers(settings, "http://localhost:5173")
+    assert allowed["access-control-allow-origin"] == "http://localhost:5173"
+    assert allowed["access-control-allow-credentials"] == "true"
+    assert "access-control-allow-origin" not in _cors_headers(settings, "http://evil.example")

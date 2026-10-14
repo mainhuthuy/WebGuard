@@ -209,6 +209,8 @@ Hệ thống được thiết kế theo nguyên tắc "Secure by Default" nhằm
 
 6. **3 file Docker Compose độc lập, không đụng nhau (xem `docs/learning/4.3`):** `docker-compose.yml` (production), `docker-compose.dev.yml` (dev, bind-mount + hot-reload), `docker-compose.demo.yml` mỗi file có `name:` riêng (`webguard`, `webguard-dev`, `webguard-demo`) — nếu không, cả 3 cùng nằm trong thư mục `docker/` sẽ mặc định chung một project name, khiến image/network/volume đụng nhau giữa các file. `docker-compose.yml` cho phép ghi đè `BACKEND_PORT`/`FRONTEND_PORT`/`WEBGUARD_CORS_ORIGINS` qua `docker/.env` (xem `docker/.env.example`).
 
+7. **CI/CD & DevSecOps (xem `docs/learning/4.4`–`4.7`):** 4 workflow trong `.github/workflows/` — `backend-ci.yml` (Ruff + Pytest), `frontend-ci.yml` (ESLint + `tsc -b` + Vite build), `security.yml` (`pip-audit`, `npm audit`, Trivy; chạy cả hằng tuần) và `cd-publish-images.yml` (build → quét Trivy → push GHCR, chỉ trên `main`/tag `v*`, **không** chạy trên PR). Cổng chặn chỉ tính lỗ hổng HIGH/CRITICAL **đã có bản vá** để luôn hành động được. Các workflow đã được viết nhưng chưa chạy trên GitHub; mới chạy thử ở local các lệnh frontend (ESLint, `tsc`, Vite build) và `npm audit`.
+
 ---
 
 ## 5. Cấu trúc Thư mục & Mô đun Hóa (Directory Structure)

@@ -58,7 +58,14 @@ docker compose up -d
 # Backend API: http://localhost:8000/docs
 ```
 
-For detailed setup instructions, see [SETUP_GUIDE.md](docs/SETUP_GUIDE.md).
+Prefer to run it locally without Docker? One command sets everything up (checks prerequisites, creates the venv, installs backend + frontend dependencies, copies the `.env` files):
+
+```bash
+./scripts/setup-dev.sh        # Linux / macOS / Git Bash
+.\scripts\setup-dev.ps1       # Windows PowerShell
+```
+
+For detailed setup instructions, see [SETUP_GUIDE.md](docs/SETUP_GUIDE.md). Want to contribute? Read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 🏗️ Tech Stack
 
@@ -72,6 +79,7 @@ For detailed setup instructions, see [SETUP_GUIDE.md](docs/SETUP_GUIDE.md).
 
 ## 📖 Documentation
 
+- [Contributing](CONTRIBUTING.md) — From clone to merged PR
 - [Setup Guide](docs/SETUP_GUIDE.md) — Installation from scratch
 - [Dev Workflow](docs/DEV_WORKFLOW.md) — Daily development process
 - [Git Conventions](docs/GIT_CONVENTIONS.md) — Branching & commit standards

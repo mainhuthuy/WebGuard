@@ -1,4 +1,4 @@
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 
 import httpx
 
@@ -15,6 +15,7 @@ REDIRECT_PARAM_NAMES = (
 )
 # .invalid dành riêng cho mục đích test, không bao giờ phân giải được (RFC 2606) — an toàn để làm "mồi"
 OPEN_REDIRECT_MARKER = "https://webguard-redirect-check.invalid/"
+OPEN_REDIRECT_HOST = "webguard-redirect-check.invalid"
 
 
 class HttpConfigModule(BaseModule):
@@ -130,7 +131,11 @@ class HttpConfigModule(BaseModule):
             except httpx.HTTPError:
                 continue
             location = response.headers.get("location", "")
-            if response.status_code in REDIRECT_STATUSES and "webguard-redirect-check.invalid" in location:
+            # So sánh HOST ĐÍCH của redirect, không tìm chuỗi con: trang chặn bot/đồng ý cookie
+            # (vd google.com/sorry/index?continue=<URL gốc>) nhắc lại URL ta gửi trong `Location`
+            # nhưng đích đến thật là domain khác — đó không phải open redirect.
+            destination = urlparse(urljoin(probe, location)).hostname
+            if response.status_code in REDIRECT_STATUSES and destination == OPEN_REDIRECT_HOST:
                 return self._finding(
                     "open_redirect", "medium",
                     f"Tham số '{param}' được dùng làm đích chuyển hướng mà không xác thực — server chuyển "

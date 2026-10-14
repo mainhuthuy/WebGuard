@@ -80,8 +80,9 @@ async def test_google_provider_happy_path() -> None:
         text, model = await explain_scan("google", "fake-key", None, _scan([_finding()]))
     assert text == "## Plan\n..."
     assert model == "gemini-2.0-flash"
-    # Key đi trong URL (query string) với Google — không log ra ngoài
-    assert "fake-key" in mock_post.call_args.args[0]
+    # Key đi trong header, KHÔNG nằm trong URL — httpx log URL ở mức INFO nên key sẽ lộ ra log
+    assert "fake-key" not in mock_post.call_args.args[0]
+    assert mock_post.call_args.kwargs["headers"]["x-goog-api-key"] == "fake-key"
 
 
 @pytest.mark.parametrize("provider", ["openai", "groq", "openrouter"])

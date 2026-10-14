@@ -1,0 +1,84 @@
+name: Frontend CI
+
+# Mirrors backend-ci.yml: runs on every PR targeting main/develop, and on direct pushes to
+# those branches as a safety net. Scoped to frontend/** so a backend-only change doesn't
+# burn CI minutes on a Node pipeline.
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+# A new push to the same PR cancels whatever this workflow was already running for it.
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  lint:
+    name: Lint (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+  typecheck:
+    name: Type check (TSC)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `tsc -b` follows the project references in tsconfig.json (app + node configs).
+      # noEmit is set in both, so this only type-checks.
+      - name: TypeScript
+        run: npx tsc -b
+
+  build:
+    name: Build (Vite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Vite only (no `tsc -b` as `npm run build` does): type errors are already reported
+      # by the dedicated typecheck job, so this job answers "does the bundle build?".
+      - name: Vite build
+        run: npx vite build

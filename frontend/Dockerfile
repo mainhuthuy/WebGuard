@@ -26,6 +26,10 @@ RUN npm run build
 
 FROM nginx:alpine AS production
 
+# Pull in Alpine security patches published after the nginx base image was built
+# (the Trivy gate fails on HIGH/CRITICAL CVEs that already have a fix).
+RUN apk upgrade --no-cache
+
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Lives outside conf.d/ on purpose: nginx's own base config does

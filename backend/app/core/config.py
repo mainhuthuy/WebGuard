@@ -30,7 +30,9 @@ class Settings(BaseSettings):
 
     # 2. Cấu hình CORS (cho phép frontend gọi API)
     CORS_ORIGINS: list[str] | str = ["*"]
-    CORS_ALLOW_CREDENTIALS: bool = True
+    # Mặc định tắt: app không dùng cookie/đăng nhập. Bật credentials cùng origin "*" khiến
+    # Starlette phản chiếu BẤT KỲ origin nào kèm Allow-Credentials — xem cors_allow_credentials.
+    CORS_ALLOW_CREDENTIALS: bool = False
     CORS_ALLOW_METHODS: list[str] = ["*"]
     CORS_ALLOW_HEADERS: list[str] = ["*"]
 
@@ -68,6 +70,11 @@ class Settings(BaseSettings):
         if isinstance(v, list):
             return [str(item).strip() for item in v]
         return ["*"]
+
+    @property
+    def cors_allow_credentials(self) -> bool:
+        """Credentials chỉ được bật khi origin được liệt kê cụ thể — không bao giờ đi cùng "*"."""
+        return self.CORS_ALLOW_CREDENTIALS and "*" not in self.CORS_ORIGINS
 
     @property
     def is_production(self) -> bool:

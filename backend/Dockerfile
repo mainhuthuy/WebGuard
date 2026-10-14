@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ============================================================================
 # Backend Dockerfile — multi-stage build
 #
@@ -15,7 +16,6 @@ FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN python -m venv /opt/venv
@@ -23,22 +23,29 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
-# setuptools reads `app/` to generate egg-info metadata even for an editable
-# install (`[tool.setuptools] packages = ["app"]` in pyproject.toml), so it
-# has to exist before `pip install` runs — unlike a lockfile-based install
-# (requirements.txt), there's no way to install just the dependency list
-# first and cache that layer independently of source changes here. Editable
-# install still matters for what happens AFTER install: it only registers a
-# path redirect back to /app, it doesn't copy files — so `app/` must keep
-# living at this exact path (/app/app) for every future `import app` to
-# work, including in the runtime stage below. templates/ must stay a
-# SIBLING of app/ too: Jinja2's loader in app/services/report.py finds it
-# via a relative path, not as an installed package resource.
+# Layer-caching trick: the dependency install is the slow step, so it must NOT be
+# invalidated by source edits. setuptools only needs an `app/` package to exist to
+# generate the editable-install metadata (`[tool.setuptools] packages = ["app"]` in
+# pyproject.toml), so we install against an empty stub first and copy the real source
+# AFTERWARDS. Editing app/ then only re-runs the cheap COPY layers below.
+#
+# The editable install just registers a path redirect back to /app/app (it copies no
+# files), so the real `app/` must end up at exactly that path — in this stage and in
+# the runtime stage. templates/ must stay a SIBLING of app/: Jinja2's loader in
+# app/services/report.py finds it via a relative path, not as a package resource.
+#
+# The BuildKit cache mount keeps pip's download cache OUTSIDE the image, so even when
+# pyproject.toml changes and the layer has to rerun, wheels are not downloaded again
+# (and the cache adds nothing to the final image size).
 COPY pyproject.toml ./
+RUN mkdir app && touch app/__init__.py
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-compile -e .
+
+# Real source, copied last so edits never trigger a dependency reinstall.
 COPY app/ ./app/
 COPY alembic.ini ./
 COPY templates/ ./templates/
-RUN pip install --no-compile -e .
 
 
 FROM python:3.12-slim AS runtime
